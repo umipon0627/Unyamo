@@ -131,3 +131,16 @@
     @apply font-sans;
   }
 }
+
+/* Safe area対応 */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* PWAスタンドアロン時 */
+@media (display-mode: standalone) {
+  body {
+    -webkit-touch-callout: none;
+    user-select: none;
+  }
+}

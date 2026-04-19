@@ -1,18 +1,25 @@
 import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
-import Header from '@/components/layout/Header'
+import { GameBoard } from '@/components/game/GameBoard'
 
-export default async function RoomPage({ params }: { params: { id: string } }) {
+interface Props {
+  params: { id: string }
+}
+
+export default async function RoomPage({ params }: Props) {
   const session = await auth()
-  if (!session) redirect('/login')
+  if (!session?.user?.id) redirect('/login')
+
+  // NextAuth JWTトークンを取得するためのシンプルなアプローチ:
+  // セッションのuser.idをそのまま渡し、PartyKitサーバー側でAPIを叩いて検証
+  // 本来はgetToken()でJWTを取得するが、App RouterではAPI Route経由が安全
+  const token = session.user.id // 簡略実装（本番はAPI Routeで実際のJWTを取得）
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <Header />
-      <main className="flex-1 p-4">
-        <h1 className="text-2xl font-bold text-emerald-400 mb-4">ゲームルーム: {params.id}</h1>
-        <p className="text-slate-400">Phase 3 で実装予定: ゲームボード</p>
-      </main>
-    </div>
+    <GameBoard
+      roomId={params.id}
+      myPlayerId={session.user.id}
+      token={token}
+    />
   )
 }
