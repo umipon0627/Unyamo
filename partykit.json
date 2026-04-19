@@ -1,0 +1,5 @@
+{
+  "name": "unyamo",
+  "main": "party/game-server.ts",
+  "compatibilityDate": "2025-01-01"
+}

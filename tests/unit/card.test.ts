@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getCardScore } from '@/types/card'
+import { getCardScore } from '@/game-logic/scoring'
 import type { Card } from '@/types/card'
 
 describe('getCardScore', () => {
