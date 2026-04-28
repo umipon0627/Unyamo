@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { auth } from '@/lib/auth'
 import { NextRequest, NextResponse } from 'next/server'
 import { createRoomSchema } from '@/lib/schemas'

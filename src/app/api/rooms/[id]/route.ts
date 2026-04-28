@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { auth } from '@/lib/auth'
 import { NextRequest, NextResponse } from 'next/server'
 import { getRoom, deleteRoom } from '@/lib/room-store'
@@ -8,14 +10,15 @@ function getIp(req: NextRequest): string {
 }
 
 // GET /api/rooms/[id]
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const rl = checkRateLimit(getIp(req), session.user.id)
   if (!rl.allowed) return NextResponse.json({ error: rl.reason }, { status: 429 })
 
-  const room = getRoom(params.id)
+  const room = getRoom(id)
   if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 })
 
   return NextResponse.json({
@@ -32,14 +35,15 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 }
 
 // DELETE /api/rooms/[id] — ホストのみ
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const room = getRoom(params.id)
+  const room = getRoom(id)
   if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 })
   if (room.hostId !== session.user.id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  deleteRoom(params.id)
+  deleteRoom(id)
   return NextResponse.json({ success: true })
 }

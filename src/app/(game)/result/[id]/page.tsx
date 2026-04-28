@@ -9,7 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 // 実際の結果はWebSocket経由でGameBoardが持っている
 // このページはゲーム後のサマリー兼シェアページとして機能
 
-export default async function ResultPage({ params }: { params: { id: string } }) {
+export default async function ResultPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const session = await auth()
   if (!session) redirect('/login')
 
@@ -19,7 +20,7 @@ export default async function ResultPage({ params }: { params: { id: string } })
       <main className="flex-1 max-w-2xl mx-auto w-full px-4 py-6">
         <div className="text-center mb-6">
           <h1 className="text-2xl font-bold text-emerald-400">ゲーム終了</h1>
-          <p className="text-slate-400 text-sm mt-1">ルームID: {params.id}</p>
+          <p className="text-slate-400 text-sm mt-1">ルームID: {id}</p>
         </div>
         <Card className="bg-slate-800 border-slate-700 mb-4">
           <CardHeader>
@@ -38,7 +39,7 @@ export default async function ResultPage({ params }: { params: { id: string } })
               ロビーへ戻る
             </Button>
           </Link>
-          <Link href={`/room/${params.id}`}>
+          <Link href={`/room/${id}`}>
             <Button variant="outline" className="border-slate-600">
               同じルームで再戦
             </Button>
