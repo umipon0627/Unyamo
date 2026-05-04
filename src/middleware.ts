@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GUEST_COOKIE_NAME } from '@/lib/guest-cookie'
 
-const protectedPaths = ['/lobby', '/room', '/result']
+const protectedPaths = ['/lobby', '/room', '/result', '/play']
 const loginRequiredPaths = ['/profile'] // ゲストではアクセス不可
 
 export function middleware(req: NextRequest) {

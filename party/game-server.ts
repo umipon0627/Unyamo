@@ -1,7 +1,7 @@
 import type * as Party from 'partykit/server'
 import type { GameState, PlayerState } from '../src/types/game'
 import type { Card } from '../src/types/card'
-import type { ClientMessage, ServerMessage } from './messages'
+import type { ServerMessage } from './messages'
 import { clientMessageSchema } from './messages'
 import { verifyToken } from './auth'
 import { projectStateForPlayer } from './projection'
@@ -13,6 +13,8 @@ import {
   validateDiscardPickup, validateDrawPhase, validateDiscardPhase
 } from '../src/game-logic/validation'
 import { judgeWinner } from '../src/game-logic/unyamo'
+import { decideUnyamoDeclaration, decideDrawSource, decideDiscard } from '../src/game-logic/cpu'
+import type { CpuDifficulty } from '../src/game-logic/cpu'
 
 function escapeHtml(str: string): string {
   return str
@@ -36,14 +38,19 @@ export default class GameServer implements Party.Server {
   roomDestroyTimer: ReturnType<typeof setTimeout> | null = null
   lastMessageAt = new Map<string, number>()
 
+  // CPU対戦用フィールド
+  cpuPlayerIds = new Set<string>()
+  cpuDifficulty: CpuDifficulty = 'EASY'
+  cpuActionTimer: ReturnType<typeof setTimeout> | null = null
+
   constructor(readonly room: Party.Room) {}
 
-  onConnect(conn: Party.Connection) {
+  onConnect(_conn: Party.Connection) {
     // 接続確立のみ。JOINメッセージを待つ
   }
 
   async onMessage(message: string, sender: Party.Connection) {
-    // レート制限: 1秒1回
+    // レート制限: 1秒1回（CPUプレイヤーはレート制限対象外）
     const now = Date.now()
     const last = this.lastMessageAt.get(sender.id) ?? 0
     if (now - last < 1000) {
@@ -62,6 +69,7 @@ export default class GameServer implements Party.Server {
     switch (msg.type) {
       case 'JOIN': return this.handleJoin(sender, msg.payload.token)
       case 'START_GAME': return this.handleStartGame(sender)
+      case 'START_CPU_GAME': return this.handleStartCpuGame(sender, msg.payload)
       case 'DISCARD': return this.handleDiscard(sender, msg.payload.cardId)
       case 'DISCARD_MULTIPLE': return this.handleDiscardMultiple(sender, msg.payload.cardIds)
       case 'DRAW': return this.handleDraw(sender, msg.payload.source)
@@ -103,8 +111,6 @@ export default class GameServer implements Party.Server {
   }
 
   private async handleJoin(conn: Party.Connection, token: string) {
-    // PartyKit では環境変数は room.env 経由でのみ取得可能（process.env では空になる）。
-    // AUTH_SECRET / NEXTAUTH_SECRET のどちらかにフォールバック。
     const env = this.room.env
     const rawSecret = env['AUTH_SECRET'] ?? env['NEXTAUTH_SECRET']
     const secret = typeof rawSecret === 'string' ? rawSecret : undefined
@@ -204,6 +210,288 @@ export default class GameServer implements Party.Server {
     this.scheduleTurnTimeout()
   }
 
+  private handleStartCpuGame(
+    conn: Party.Connection,
+    payload: { cpuCount: number; difficulty: 'EASY' | 'HARD' }
+  ) {
+    const info = this.connections.get(conn.id)
+    if (!info || !this.gameState) return
+
+    if (info.userId !== this.gameState.hostId) {
+      send(conn, { type: 'ERROR', payload: { code: 'NOT_HOST', message: 'Only host can start the game' } })
+      return
+    }
+    if (this.gameState.phase !== 'WAITING') {
+      send(conn, { type: 'ERROR', payload: { code: 'WRONG_PHASE', message: 'Game already started' } })
+      return
+    }
+    // ホスト（自分）のみの状態でCPUゲーム開始を許可
+    if (this.gameState.players.length !== 1) {
+      send(conn, { type: 'ERROR', payload: { code: 'TOO_MANY_PLAYERS', message: 'CPU game requires exactly 1 human player' } })
+      return
+    }
+
+    const { cpuCount, difficulty } = payload
+    this.cpuDifficulty = difficulty
+
+    // CPUプレイヤーを追加
+    const cpuPlayers: PlayerState[] = Array.from({ length: cpuCount }, (_, i) => ({
+      id: `cpu:${i}:${this.room.id}`,
+      name: `CPU${i + 1}`,
+      hand: [],
+      isConnected: true,
+      lastActiveAt: Date.now(),
+      hasDrawnThisTurn: false,
+      hasActedThisTurn: false,
+      hasUsedSpecialAction: false,
+    }))
+
+    // cpuPlayerIdsを登録
+    this.cpuPlayerIds = new Set(cpuPlayers.map(p => p.id))
+
+    const allPlayers = [...this.gameState.players, ...cpuPlayers]
+    const deck = shuffleDeck(createDeck())
+    const { hands, remainingDeck } = dealCards(deck, allPlayers.length)
+    const turnOrder = initializeTurnOrder(allPlayers.map(p => p.id))
+
+    this.gameState = {
+      ...this.gameState,
+      phase: 'PLAYING',
+      deck: remainingDeck,
+      discardPile: [],
+      players: allPlayers.map((p, i) => ({ ...p, hand: hands[i] ?? [] })),
+      turnOrder,
+      currentTurnIndex: 0,
+      startedAt: Date.now(),
+    }
+    this.broadcastGameState()
+    // ターンタイムアウトはCPUターンには不要
+    if (!this.cpuPlayerIds.has(getCurrentPlayerId(this.gameState))) {
+      this.scheduleTurnTimeout()
+    }
+    this.scheduleCpuActionIfNeeded()
+  }
+
+  /**
+   * 現在ターンプレイヤーがCPUであれば、遅延後にCPUターンを実行する。
+   */
+  private scheduleCpuActionIfNeeded() {
+    if (!this.gameState) return
+    const currentId = getCurrentPlayerId(this.gameState)
+    if (!this.cpuPlayerIds.has(currentId)) return
+
+    // 既存タイマーをクリア
+    if (this.cpuActionTimer) {
+      clearTimeout(this.cpuActionTimer)
+      this.cpuActionTimer = null
+    }
+
+    const delay = 800 + Math.floor(Math.random() * 700) // 800〜1499ms
+    this.cpuActionTimer = setTimeout(() => {
+      this.cpuActionTimer = null
+      this.executeCpuTurn(currentId)
+    }, delay)
+  }
+
+  /**
+   * CPUのターンを自動実行する。
+   */
+  private executeCpuTurn(cpuId: string) {
+    if (!this.gameState) return
+    const player = this.gameState.players.find(p => p.id === cpuId)
+    if (!player) return
+
+    // ウニャモ宣言チェック（DRAWフェーズでのみ可能）
+    if (!player.hasDrawnThisTurn) {
+      const shouldDeclare = decideUnyamoDeclaration(player.hand, this.cpuDifficulty)
+      if (shouldDeclare) {
+        this.performDeclareUnyamo(cpuId)
+        this.scheduleCpuActionIfNeeded()
+        return
+      }
+
+      // DRAW
+      const discardTop = this.gameState.discardPile[this.gameState.discardPile.length - 1] ?? null
+      const prevPlayerId = this.gameState.turnOrder[
+        (this.gameState.currentTurnIndex - 1 + this.gameState.turnOrder.length) % this.gameState.turnOrder.length
+      ]
+      const canPickupFromDiscard =
+        !!discardTop &&
+        !!prevPlayerId &&
+        discardTop.discardedBy === prevPlayerId &&
+        prevPlayerId !== cpuId
+
+      const source = decideDrawSource(
+        player.hand,
+        discardTop,
+        canPickupFromDiscard,
+        this.cpuDifficulty
+      )
+      this.performDraw(cpuId, source)
+    }
+
+    // DISCARD（500ms後）
+    this.cpuActionTimer = setTimeout(() => {
+      this.cpuActionTimer = null
+      if (!this.gameState) return
+      const updatedPlayer = this.gameState.players.find(p => p.id === cpuId)
+      if (!updatedPlayer || !updatedPlayer.hasDrawnThisTurn) return
+
+      const cardIds = decideDiscard(updatedPlayer.hand, this.cpuDifficulty)
+      if (cardIds.length === 0) return
+      this.performDiscard(cpuId, cardIds)
+      this.scheduleCpuActionIfNeeded()
+    }, 500)
+  }
+
+  /**
+   * DRAWの内部処理（CPU・人間共通）
+   */
+  private performDraw(playerId: string, source: 'deck' | 'discard') {
+    if (!this.gameState) return
+
+    // バリデーション
+    const player = this.gameState.players.find(p => p.id === playerId)
+    if (!player) return
+    const checks = [
+      validatePhase(this.gameState, 'DRAW'),
+      validateTurn(this.gameState, playerId),
+      validateDrawPhase(player),
+      validateDrawSource(this.gameState, source),
+      ...(source === 'discard' ? [validateDiscardPickup(this.gameState, playerId)] : []),
+    ]
+    for (const r of checks) {
+      if (!r.valid) return // CPU操作なのでエラーは無視
+    }
+
+    let drawnCard: Card | null = null
+    if (source === 'deck') {
+      const { card, remainingDeck } = drawFromDeck(this.gameState.deck)
+      drawnCard = card
+      this.gameState = { ...this.gameState, deck: remainingDeck }
+    } else {
+      const { card, remainingPile } = drawFromDiscardPile(this.gameState.discardPile)
+      drawnCard = card ? { ...card, discardedBy: undefined } : null
+      this.gameState = { ...this.gameState, discardPile: remainingPile }
+    }
+
+    if (!drawnCard) return
+
+    this.gameState = {
+      ...this.gameState,
+      players: this.gameState.players.map(p =>
+        p.id === playerId
+          ? { ...p, hand: [...p.hand, drawnCard!], hasDrawnThisTurn: true, lastActiveAt: Date.now() }
+          : p
+      ),
+    }
+    this.broadcastGameState()
+  }
+
+  /**
+   * DISCARDの内部処理（CPU・人間共通）
+   * cardIds.length === 1: 通常捨て
+   * cardIds.length >= 2: 特殊操作（DISCARD_MULTIPLE）
+   */
+  private performDiscard(playerId: string, cardIds: string[]) {
+    if (!this.gameState) return
+    const player = this.gameState.players.find(p => p.id === playerId)
+    if (!player) return
+
+    if (cardIds.length === 1) {
+      const cardId = cardIds[0]!
+      const checks = [
+        validatePhase(this.gameState, 'DISCARD'),
+        validateTurn(this.gameState, playerId),
+        validateDiscardPhase(player),
+        validateNoDuplicateAction(player, 'normal'),
+        validateCardExists(player.hand, [cardId]),
+      ]
+      for (const r of checks) {
+        if (!r.valid) return
+      }
+
+      const card = player.hand.find(c => c.id === cardId)!
+      const discardedCard: Card = { ...card, discardedBy: playerId }
+      this.gameState = {
+        ...this.gameState,
+        discardPile: [...this.gameState.discardPile, discardedCard],
+        players: this.gameState.players.map(p =>
+          p.id === playerId
+            ? { ...p, hand: p.hand.filter(c => c.id !== cardId), hasActedThisTurn: true, lastActiveAt: Date.now() }
+            : p
+        ),
+      }
+    } else {
+      // DISCARD_MULTIPLE
+      const selectedCards = player.hand.filter(c => cardIds.includes(c.id))
+      const checks = [
+        validatePhase(this.gameState, 'DISCARD_MULTIPLE'),
+        validateTurn(this.gameState, playerId),
+        validateDiscardPhase(player),
+        validateNoDuplicateAction(player, 'special'),
+        validateCardExists(player.hand, cardIds),
+        validateDiscardMultiple(selectedCards),
+      ]
+      for (const r of checks) {
+        if (!r.valid) return
+      }
+
+      const discardedCards: Card[] = selectedCards.map(c => ({ ...c, discardedBy: playerId }))
+      this.gameState = {
+        ...this.gameState,
+        discardPile: [...this.gameState.discardPile, ...discardedCards],
+        players: this.gameState.players.map(p =>
+          p.id === playerId
+            ? { ...p, hand: p.hand.filter(c => !cardIds.includes(c.id)), hasActedThisTurn: true, hasUsedSpecialAction: true, lastActiveAt: Date.now() }
+            : p
+        ),
+      }
+    }
+
+    this.advanceAfterDiscard(playerId)
+  }
+
+  /**
+   * ウニャモ宣言の内部処理（CPU・人間共通）
+   */
+  private performDeclareUnyamo(playerId: string) {
+    if (!this.gameState) return
+    const player = this.gameState.players.find(p => p.id === playerId)
+    if (!player) return
+
+    const checks = [
+      validatePhase(this.gameState, 'DECLARE_UNYAMO'),
+      validateTurn(this.gameState, playerId),
+      validateUnyamo(player.hand),
+    ]
+    for (const r of checks) {
+      if (!r.valid) return
+    }
+
+    const remainingPlayers = this.gameState.turnOrder.filter(id => id !== playerId)
+    this.gameState = {
+      ...this.gameState,
+      unyamoDeclarerId: playerId,
+      remainingPlayersAfterDeclare: remainingPlayers,
+    }
+
+    this.broadcastMessage({ type: 'UNYAMO_DECLARED', payload: { playerId, playerName: player.name } })
+
+    if (isRoundComplete(this.gameState)) {
+      this.finalizeGame()
+      return
+    }
+
+    this.gameState = advanceTurn(this.gameState)
+    this.broadcastMessage({ type: 'TURN_CHANGE', payload: { currentPlayerId: getCurrentPlayerId(this.gameState) } })
+    this.broadcastGameState()
+    if (!this.cpuPlayerIds.has(getCurrentPlayerId(this.gameState))) {
+      this.scheduleTurnTimeout()
+    }
+    this.scheduleCpuActionIfNeeded()
+  }
+
   private handleDiscard(conn: Party.Connection, cardId: string) {
     const info = this.connections.get(conn.id)
     if (!info || !this.gameState) return
@@ -214,7 +502,7 @@ export default class GameServer implements Party.Server {
     const checks = [
       validatePhase(this.gameState, 'DISCARD'),
       validateTurn(this.gameState, info.userId),
-      validateDiscardPhase(player), // 先にDRAWしている必要がある
+      validateDiscardPhase(player),
       validateNoDuplicateAction(player, 'normal'),
       validateCardExists(player.hand, [cardId]),
     ]
@@ -238,7 +526,6 @@ export default class GameServer implements Party.Server {
     }
     send(conn, { type: 'ACTION_RESULT', payload: { success: true, action: 'DISCARD', playerId: info.userId } })
 
-    // DISCARDでターン終了 → 次プレイヤーへ
     this.advanceAfterDiscard(info.userId)
   }
 
@@ -253,7 +540,7 @@ export default class GameServer implements Party.Server {
     const checks = [
       validatePhase(this.gameState, 'DISCARD_MULTIPLE'),
       validateTurn(this.gameState, info.userId),
-      validateDiscardPhase(player), // 先にDRAWしている必要がある
+      validateDiscardPhase(player),
       validateNoDuplicateAction(player, 'special'),
       validateCardExists(player.hand, cardIds),
       validateDiscardMultiple(selectedCards),
@@ -277,7 +564,6 @@ export default class GameServer implements Party.Server {
     }
     send(conn, { type: 'ACTION_RESULT', payload: { success: true, action: 'DISCARD_MULTIPLE', playerId: info.userId } })
 
-    // DISCARD_MULTIPLEでターン終了 → 次プレイヤーへ
     this.advanceAfterDiscard(info.userId)
   }
 
@@ -291,7 +577,7 @@ export default class GameServer implements Party.Server {
     const checks = [
       validatePhase(this.gameState, 'DRAW'),
       validateTurn(this.gameState, info.userId),
-      validateDrawPhase(player), // まだ引いていないこと
+      validateDrawPhase(player),
       validateDrawSource(this.gameState, source),
       ...(source === 'discard' ? [validateDiscardPickup(this.gameState, info.userId)] : []),
     ]
@@ -309,7 +595,6 @@ export default class GameServer implements Party.Server {
       this.gameState = { ...this.gameState, deck: remainingDeck }
     } else {
       const { card, remainingPile } = drawFromDiscardPile(this.gameState.discardPile)
-      // 拾ったカードからは discardedBy を除去（手札に戻すため）
       drawnCard = card ? { ...card, discardedBy: undefined } : null
       this.gameState = { ...this.gameState, discardPile: remainingPile }
     }
@@ -326,16 +611,11 @@ export default class GameServer implements Party.Server {
     }
 
     send(conn, { type: 'ACTION_RESULT', payload: { success: true, action: 'DRAW', playerId: info.userId } })
-    // DRAWではターンを進めない。次は同じプレイヤーがDISCARDフェーズへ。
     this.broadcastGameState()
-    // タイマーは継続（同一ターン内のDISCARD待ち）
   }
 
   /**
    * DISCARD / DISCARD_MULTIPLE 完了後にターンを進める共通処理。
-   * - ウニャモ宣言中は remainingPlayersAfterDeclare を更新
-   * - ラウンド完了なら finalizeGame
-   * - そうでなければ advanceTurn して次のプレイヤーへ
    */
   private advanceAfterDiscard(actorId: string) {
     if (!this.gameState) return
@@ -356,7 +636,12 @@ export default class GameServer implements Party.Server {
     this.gameState = advanceTurn(this.gameState)
     this.broadcastMessage({ type: 'TURN_CHANGE', payload: { currentPlayerId: getCurrentPlayerId(this.gameState) } })
     this.broadcastGameState()
-    this.scheduleTurnTimeout()
+
+    // 次のターンプレイヤーがCPUでなければタイムアウトをセット
+    if (!this.cpuPlayerIds.has(getCurrentPlayerId(this.gameState))) {
+      this.scheduleTurnTimeout()
+    }
+    this.scheduleCpuActionIfNeeded()
   }
 
   private handleDeclareUnyamo(conn: Party.Connection) {
@@ -395,11 +680,14 @@ export default class GameServer implements Party.Server {
     this.gameState = advanceTurn(this.gameState)
     this.broadcastMessage({ type: 'TURN_CHANGE', payload: { currentPlayerId: getCurrentPlayerId(this.gameState) } })
     this.broadcastGameState()
-    this.scheduleTurnTimeout()
+    if (!this.cpuPlayerIds.has(getCurrentPlayerId(this.gameState))) {
+      this.scheduleTurnTimeout()
+    }
+    this.scheduleCpuActionIfNeeded()
   }
 
   private async handleReconnect(conn: Party.Connection, token: string) {
-    await this.handleJoin(conn, token) // JOINハンドラが再接続も処理する
+    await this.handleJoin(conn, token)
   }
 
   private finalizeGame() {
@@ -430,8 +718,10 @@ export default class GameServer implements Party.Server {
     this.broadcastMessage({ type: 'GAME_RESULT', payload: { results: gameResultPayload } })
     this.broadcastGameState()
 
-    // ゲスト以外のプレイヤーが1人でもいればDB保存を試みる
-    const hasRegisteredPlayer = results.some(r => !r.playerId.startsWith('guest:'))
+    // CPU以外の登録済みプレイヤーが1人でもいればDB保存を試みる
+    const hasRegisteredPlayer = results.some(r =>
+      !r.playerId.startsWith('guest:') && !r.playerId.startsWith('cpu:')
+    )
     if (hasRegisteredPlayer) {
       const baseUrl = (this.room.env['NEXTAUTH_URL'] as string | undefined) ?? 'http://localhost:3000'
       const secret = this.room.env['INTERNAL_API_SECRET'] as string | undefined
@@ -450,7 +740,7 @@ export default class GameServer implements Party.Server {
               isWinner: r.isWinner,
             })),
           }),
-        }).catch(() => {}) // 失敗してもゲームは終了済みなので無視
+        }).catch(() => {})
       }
     }
   }
@@ -459,13 +749,15 @@ export default class GameServer implements Party.Server {
     this.cancelTurnTimeout()
     if (!this.gameState) return
     const currentPlayerId = getCurrentPlayerId(this.gameState)
+
+    // CPUのターンにはタイムアウトを設定しない
+    if (this.cpuPlayerIds.has(currentPlayerId)) return
+
     this.turnTimer = setTimeout(() => {
       if (!this.gameState) return
       const player = this.gameState.players.find(p => p.id === currentPlayerId)
       if (!player) return
 
-      // 自動操作（仕様: 引く→捨てる）。
-      // まだ引いていない場合は山札から1枚引く。
       if (!player.hasDrawnThisTurn) {
         const { card, remainingDeck } = drawFromDeck(this.gameState.deck)
         if (card) {
@@ -481,10 +773,8 @@ export default class GameServer implements Party.Server {
         }
       }
 
-      // 次に最大点カードを捨てる。
       const updatedPlayer = this.gameState.players.find(p => p.id === currentPlayerId)
       if (!updatedPlayer || updatedPlayer.hand.length === 0) {
-        // 引けず手札も空（山札枯渇）→ ターンだけ進める
         this.advanceAfterDiscard(currentPlayerId)
         return
       }

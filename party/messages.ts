@@ -15,10 +15,17 @@ export const drawSchema = z.object({
 })
 export const declareUnyamoSchema = z.object({ type: z.literal('DECLARE_UNYAMO') })
 export const reconnectSchema = z.object({ type: z.literal('RECONNECT'), payload: z.object({ token: z.string() }) })
+export const startCpuGameSchema = z.object({
+  type: z.literal('START_CPU_GAME'),
+  payload: z.object({
+    cpuCount: z.number().int().min(1).max(3),
+    difficulty: z.enum(['EASY', 'HARD']),
+  }),
+})
 
 export const clientMessageSchema = z.discriminatedUnion('type', [
   joinSchema, startGameSchema, discardSchema, discardMultipleSchema,
-  drawSchema, declareUnyamoSchema, reconnectSchema,
+  drawSchema, declareUnyamoSchema, reconnectSchema, startCpuGameSchema,
 ])
 
 export type ClientMessage = z.infer<typeof clientMessageSchema>

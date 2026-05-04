@@ -67,8 +67,8 @@ export default function Header() {
         <nav className="flex items-center gap-4">
           {isAuthed ? (
             <>
-              <Link href="/lobby" className="text-sm text-slate-300 hover:text-white">
-                ロビー
+              <Link href="/play" className="text-sm text-slate-300 hover:text-white">
+                プレイ
               </Link>
               <Link href="/profile" className="text-sm text-slate-300 hover:text-white">
                 プロフィール
@@ -89,8 +89,8 @@ export default function Header() {
             </>
           ) : isGuest ? (
             <>
-              <Link href="/lobby" className="text-sm text-slate-300 hover:text-white">
-                ロビー
+              <Link href="/play" className="text-sm text-slate-300 hover:text-white">
+                プレイ
               </Link>
               <DropdownMenu>
                 <DropdownMenuTrigger className="cursor-pointer rounded-md px-2 py-1 hover:bg-slate-700 focus:outline-none flex items-center gap-2">

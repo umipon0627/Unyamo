@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useWebSocket } from '@/hooks/useWebSocket'
@@ -28,6 +28,33 @@ export function GameBoard({ roomId, myPlayerId, token }: GameBoardProps) {
   const { gameState, myHand, discardTop, currentPlayerId, phase, isMyTurn, results, unyamoDeclarerId, availableActions, hostId, maxPlayers, roomName, players, canStartGame } = useGameState(lastMessage, myPlayerId)
   const { showUnyamoFlash, triggerUnyamoFlash } = useAnimation()
   const [selectedIndices, setSelectedIndices] = useState<number[]>([])
+
+  // CPU対戦: 自動開始フラグ
+  const cpuGameStartedRef = useRef(false)
+
+  const isCpuRoom = roomId.startsWith('cpu-')
+  const backPath = isCpuRoom ? '/play' : '/lobby'
+
+  // CPU対戦: WAITING状態かつホストの場合、sessionStorageの設定を読んでSTART_CPU_GAMEを送信
+  useEffect(() => {
+    if (!isCpuRoom) return
+    if (cpuGameStartedRef.current) return
+    if (status !== 'open') return
+    if (phase !== 'WAITING') return
+    if (hostId !== myPlayerId) return
+
+    const configJson = sessionStorage.getItem(`cpu-config-${roomId}`)
+    if (!configJson) return
+
+    try {
+      const config = JSON.parse(configJson) as { cpuCount: number; difficulty: 'EASY' | 'HARD' }
+      cpuGameStartedRef.current = true
+      sessionStorage.removeItem(`cpu-config-${roomId}`)
+      send({ type: 'START_CPU_GAME', payload: { cpuCount: config.cpuCount, difficulty: config.difficulty } })
+    } catch {
+      // 不正なJSONは無視
+    }
+  }, [isCpuRoom, status, phase, hostId, myPlayerId, roomId, send])
 
   const others = gameState?.otherPlayers ?? []
 
@@ -86,7 +113,7 @@ export function GameBoard({ roomId, myPlayerId, token }: GameBoardProps) {
         myPlayerId={myPlayerId}
         canStartGame={canStartGame}
         onStartGame={() => send({ type: 'START_GAME' })}
-        onLeaveRoom={() => router.push('/lobby')}
+        onLeaveRoom={() => router.push(backPath)}
       />
     )
   }
@@ -200,7 +227,7 @@ export function GameBoard({ roomId, myPlayerId, token }: GameBoardProps) {
         open={phase === 'RESULT' && !!results}
         results={results?.results ?? []}
         myPlayerId={myPlayerId}
-        onBackToLobby={() => router.push('/lobby')}
+        onBackToLobby={() => router.push(backPath)}
       />
     </div>
   )

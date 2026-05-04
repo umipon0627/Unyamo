@@ -7,7 +7,7 @@ import { getCurrentUser } from '@/lib/current-user'
 
 export default async function LandingPage() {
   const user = await getCurrentUser()
-  if (user) redirect('/lobby')
+  if (user) redirect('/play')
 
   return (
     <div className="flex flex-col min-h-screen">
