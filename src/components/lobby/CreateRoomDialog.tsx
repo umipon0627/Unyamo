@@ -65,7 +65,7 @@ export function CreateRoomDialog() {
           <div>
             <Label className="text-slate-300">最大人数</Label>
             <div className="flex gap-2 mt-1">
-              {[3, 4, 5, 6, 7, 8].map(n => (
+              {[2, 3, 4, 5, 6, 7, 8].map(n => (
                 <button
                   key={n}
                   onClick={() => setMaxPlayers(n)}

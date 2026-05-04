@@ -18,6 +18,8 @@
     "@base-ui/react": "^1.4.0",
     "@prisma/client": "^5.22.0",
     "@supabase/supabase-js": "^2.103.3",
+    "@types/bcryptjs": "^2.4.6",
+    "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "framer-motion": "^12.38.0",
