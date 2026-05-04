@@ -183,6 +183,7 @@ export function GameBoard({ roomId, myPlayerId, token }: GameBoardProps) {
               onDraw={handleDraw}
               onDiscard={handleDiscard}
               onDiscardMultiple={handleDiscardMultiple}
+              discardTop={discardTop}
             />
             <UnyamoButton
               canDeclare={canDeclare}

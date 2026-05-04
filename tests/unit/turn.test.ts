@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getCurrentPlayerId, advanceTurn, isRoundComplete, initializeTurnOrder } from '@/game-logic/turn'
+import { getCurrentPlayerId, advanceTurn, isRoundComplete, initializeTurnOrder, getPreviousPlayerId } from '@/game-logic/turn'
 import type { GameState, PlayerState } from '@/types/game'
 import type { Card } from '@/types/card'
 
@@ -65,5 +65,46 @@ describe('isRoundComplete', () => {
   it('false when remaining players exist', () => {
     const state = makeState({ unyamoDeclarerId: 'p1', remainingPlayersAfterDeclare: ['p2'] })
     expect(isRoundComplete(state)).toBe(false)
+  })
+})
+
+describe('getPreviousPlayerId', () => {
+  it('returns empty string for single player', () => {
+    const state = makeState({
+      turnOrder: ['p1'],
+      players: [makePlayer('p1')],
+    })
+    expect(getPreviousPlayerId(state)).toBe('')
+  })
+
+  it('returns p3 when currentTurnIndex=0 (wraps around)', () => {
+    // turnOrder=['p1','p2','p3'], current=p1 → prev=p3
+    expect(getPreviousPlayerId(makeState({ currentTurnIndex: 0 }))).toBe('p3')
+  })
+
+  it('returns p1 when currentTurnIndex=1', () => {
+    expect(getPreviousPlayerId(makeState({ currentTurnIndex: 1 }))).toBe('p1')
+  })
+
+  it('returns p2 when currentTurnIndex=2', () => {
+    expect(getPreviousPlayerId(makeState({ currentTurnIndex: 2 }))).toBe('p2')
+  })
+
+  it('skips disconnected player (p3 disconnected, currentTurnIndex=0 → wraps to p2)', () => {
+    // turnOrder=['p1','p2','p3'], current=p1; p3 is disconnected → skip p3 → prev=p2
+    const state = makeState({
+      currentTurnIndex: 0,
+      players: [makePlayer('p1'), makePlayer('p2'), makePlayer('p3', false)],
+    })
+    expect(getPreviousPlayerId(state)).toBe('p2')
+  })
+
+  it('skips disconnected player (p2 disconnected, currentTurnIndex=2 → wraps to p1)', () => {
+    // turnOrder=['p1','p2','p3'], current=p3; p2 is disconnected → skip p2 → prev=p1
+    const state = makeState({
+      currentTurnIndex: 2,
+      players: [makePlayer('p1'), makePlayer('p2', false), makePlayer('p3')],
+    })
+    expect(getPreviousPlayerId(state)).toBe('p1')
   })
 })

@@ -40,3 +40,21 @@ export function isRoundComplete(state: GameState): boolean {
   if (!state.unyamoDeclarerId) return false
   return state.remainingPlayersAfterDeclare.length === 0
 }
+
+/**
+ * 現在のターンプレイヤーの「直前のプレイヤー」IDを返す。
+ * 切断中のプレイヤーはスキップする（advanceTurnと対称のロジック）。
+ * プレイヤーが1人以下の場合は空文字を返す。
+ */
+export function getPreviousPlayerId(state: GameState): string {
+  const { turnOrder, currentTurnIndex, players } = state
+  if (turnOrder.length <= 1) return ''
+  let prevIndex = (currentTurnIndex - 1 + turnOrder.length) % turnOrder.length
+  for (let attempts = 0; attempts < turnOrder.length; attempts++) {
+    const prevPlayerId = turnOrder[prevIndex]
+    const prevPlayer = players.find(p => p.id === prevPlayerId)
+    if (prevPlayer?.isConnected) return prevPlayerId ?? ''
+    prevIndex = (prevIndex - 1 + turnOrder.length) % turnOrder.length
+  }
+  return ''
+}

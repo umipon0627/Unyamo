@@ -1,6 +1,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
+import type { Card } from '@/types/card'
 
 interface ActionPanelProps {
   isMyTurn: boolean
@@ -14,11 +15,13 @@ interface ActionPanelProps {
   onDiscard: () => void
   onDiscardMultiple: () => void
   disabled?: boolean
+  discardTop?: Card | null
 }
 
 export function ActionPanel({
   isMyTurn, hasDrawn, canDrawDeck, canDrawDiscard,
-  selectedCount, hasUsedSpecial, onDraw, onDiscard, onDiscardMultiple, disabled = false
+  selectedCount, hasUsedSpecial, onDraw, onDiscard, onDiscardMultiple,
+  disabled = false, discardTop,
 }: ActionPanelProps) {
   if (!isMyTurn) {
     return (
@@ -54,7 +57,11 @@ export function ActionPanel({
         </Button>
       )}
       {!hasDrawn && !canDrawDeck && !canDrawDiscard && (
-        <span className="text-slate-500 text-sm py-1">引けるカードがありません</span>
+        <span className="text-slate-500 text-sm py-1">
+          {discardTop
+            ? '捨て札は直前のプレイヤーのものではないため引けません'
+            : '引けるカードがありません'}
+        </span>
       )}
 
       {/* DISCARD_PHASE: 1枚捨てる / まとめて捨てる */}

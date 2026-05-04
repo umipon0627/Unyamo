@@ -2,6 +2,7 @@ import type { GameState } from '../src/types/game'
 import type { ClientGameStatePayload } from './messages'
 import { calculateHandScore } from '../src/game-logic/scoring'
 import { canDeclareUnyamo } from '../src/game-logic/unyamo'
+import { getPreviousPlayerId } from '../src/game-logic/turn'
 
 function escapeHtml(str: string): string {
   return str
@@ -41,10 +42,11 @@ export function projectStateForPlayer(
     playerId === state.hostId
 
   const discardTop = state.discardPile[state.discardPile.length - 1] ?? null
-  // 捨て札から拾えるのは「DRAWフェーズ」かつ「自分が捨てたカードでない」場合のみ。
+  const prevPlayerId = getPreviousPlayerId(state)
   const canPickupFromDiscard =
     !!discardTop &&
-    discardTop.discardedBy !== playerId &&
+    !!prevPlayerId &&
+    discardTop.discardedBy === prevPlayerId &&
     !me?.hasDrawnThisTurn &&
     currentPlayerId === playerId &&
     state.phase === 'PLAYING'

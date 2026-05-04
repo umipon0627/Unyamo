@@ -1,6 +1,7 @@
 import type { Card } from '@/types/card'
 import type { GameState, PlayerState } from '@/types/game'
 import { calculateHandScore } from './scoring'
+import { getPreviousPlayerId } from './turn'
 
 export type ValidationResult =
   | { valid: true }
@@ -109,10 +110,6 @@ export function validateDrawSource(
   return { valid: true }
 }
 
-/**
- * 捨て札の一番上が「自分が直前に捨てたカード」でないことを検証する。
- * 自分が捨てたカードを自分で拾うのは反則（仕様: 直前のプレイヤーが捨てたカードのみ拾える）。
- */
 export function validateDiscardPickup(
   state: GameState,
   playerId: string
@@ -121,11 +118,12 @@ export function validateDiscardPickup(
   if (!top) {
     return { valid: false, code: 'DISCARD_EMPTY', message: 'Discard pile is empty' }
   }
-  if (top.discardedBy === playerId) {
+  const prevPlayerId = getPreviousPlayerId(state)
+  if (!prevPlayerId || top.discardedBy !== prevPlayerId) {
     return {
       valid: false,
-      code: 'OWN_DISCARD_PICKUP',
-      message: 'Cannot pick up a card you discarded yourself',
+      code: 'NOT_PREVIOUS_PLAYER_DISCARD',
+      message: 'Can only pick up the card discarded by the previous player',
     }
   }
   return { valid: true }

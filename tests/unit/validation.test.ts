@@ -96,26 +96,77 @@ describe('validateDrawSource', () => {
   })
 })
 
+// validateDiscardPickup テスト用ヘルパー
+// turnOrder: ['player1', 'player2'], currentTurnIndex: 0 → currentPlayer=player1, prev=player2
+const makePlayerState = (id: string, isConnected = true) => ({
+  id, name: id, hand: [] as Card[], isConnected, lastActiveAt: Date.now(),
+  hasDrawnThisTurn: false, hasActedThisTurn: false, hasUsedSpecialAction: false,
+})
+
 describe('validateDiscardPickup', () => {
   it('invalid when discard pile is empty', () => {
     const r = validateDiscardPickup(makeState({ discardPile: [] }), 'player1')
     expect(r.valid).toBe(false)
     if (!r.valid) expect(r.code).toBe('DISCARD_EMPTY')
   })
-  it('invalid when top was discarded by self (cannot pick up own discard)', () => {
-    const ownDiscard: Card = { id: 'own', suit: 'hearts', rank: 7, discardedBy: 'player1' }
-    const r = validateDiscardPickup(makeState({ discardPile: [ownDiscard] }), 'player1')
-    expect(r.valid).toBe(false)
-    if (!r.valid) expect(r.code).toBe('OWN_DISCARD_PICKUP')
-  })
-  it('valid when top was discarded by another player', () => {
-    const otherDiscard: Card = { id: 'other', suit: 'hearts', rank: 7, discardedBy: 'player2' }
-    const r = validateDiscardPickup(makeState({ discardPile: [otherDiscard] }), 'player1')
+
+  it('valid when top was discarded by the previous player (player2 → player1 acts)', () => {
+    // turnOrder=['player1','player2'], currentTurnIndex=0 → prev=player2
+    const prevDiscard: Card = { id: 'prev', suit: 'hearts', rank: 7, discardedBy: 'player2' }
+    const state = makeState({
+      discardPile: [prevDiscard],
+      players: [makePlayerState('player1'), makePlayerState('player2')],
+    })
+    const r = validateDiscardPickup(state, 'player1')
     expect(r.valid).toBe(true)
   })
-  it('valid when top has no discardedBy (legacy / pre-rule card)', () => {
-    const legacyDiscard: Card = { id: 'legacy', suit: 'hearts', rank: 7 }
-    const r = validateDiscardPickup(makeState({ discardPile: [legacyDiscard] }), 'player1')
+
+  it('invalid when top was discarded by a player 2 turns ago (3-player game)', () => {
+    // turnOrder=['p1','p2','p3'], currentTurnIndex=2 → current=p3, prev=p2
+    // discardedBy='p1' (2手前) → invalid
+    const twoTurnsAgoDiscard: Card = { id: 'old', suit: 'spades', rank: 5, discardedBy: 'p1' }
+    const state = makeState({
+      turnOrder: ['p1', 'p2', 'p3'],
+      currentTurnIndex: 2,
+      discardPile: [twoTurnsAgoDiscard],
+      players: [makePlayerState('p1'), makePlayerState('p2'), makePlayerState('p3')],
+    })
+    const r = validateDiscardPickup(state, 'p3')
+    expect(r.valid).toBe(false)
+    if (!r.valid) expect(r.code).toBe('NOT_PREVIOUS_PLAYER_DISCARD')
+  })
+
+  it('invalid when top has no discardedBy', () => {
+    const noOwnerDiscard: Card = { id: 'noowner', suit: 'hearts', rank: 7 }
+    const r = validateDiscardPickup(makeState({ discardPile: [noOwnerDiscard] }), 'player1')
+    expect(r.valid).toBe(false)
+    if (!r.valid) expect(r.code).toBe('NOT_PREVIOUS_PLAYER_DISCARD')
+  })
+
+  it('invalid when top was discarded by current player themselves', () => {
+    // currentTurnIndex=0 → current=player1, prev=player2; discardedBy=player1 → invalid
+    const ownDiscard: Card = { id: 'own', suit: 'hearts', rank: 7, discardedBy: 'player1' }
+    const state = makeState({
+      discardPile: [ownDiscard],
+      players: [makePlayerState('player1'), makePlayerState('player2')],
+    })
+    const r = validateDiscardPickup(state, 'player1')
+    expect(r.valid).toBe(false)
+    if (!r.valid) expect(r.code).toBe('NOT_PREVIOUS_PLAYER_DISCARD')
+  })
+
+  it('skips disconnected previous player to find the next connected one', () => {
+    // turnOrder=['p1','p2','p3'], currentTurnIndex=0 → current=p1
+    // p3 is disconnected → prev should skip p3 and resolve to p2
+    // discardedBy='p2' → valid
+    const prevDiscard: Card = { id: 'skip', suit: 'clubs', rank: 4, discardedBy: 'p2' }
+    const state = makeState({
+      turnOrder: ['p1', 'p2', 'p3'],
+      currentTurnIndex: 0,
+      discardPile: [prevDiscard],
+      players: [makePlayerState('p1'), makePlayerState('p2'), makePlayerState('p3', false)],
+    })
+    const r = validateDiscardPickup(state, 'p1')
     expect(r.valid).toBe(true)
   })
 })
