@@ -1,9 +1,9 @@
-import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import Header from '@/components/layout/Header'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { getCurrentUser } from '@/lib/current-user'
 
 // ゲーム結果はPartyKitのインメモリのみ（DBに保存しない設計）
 // 実際の結果はWebSocket経由でGameBoardが持っている
@@ -11,8 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 export default async function ResultPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const session = await auth()
-  if (!session) redirect('/login')
+  const user = await getCurrentUser()
+  if (!user) redirect('/login')
 
   return (
     <div className="flex flex-col min-h-screen">

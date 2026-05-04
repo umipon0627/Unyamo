@@ -1,10 +1,29 @@
-import { auth } from '@/lib/auth'
 import { NextResponse } from 'next/server'
-import { getToken } from 'next-auth/jwt'
-import type { NextRequest } from 'next/server'
+import { issuePartyToken } from '@/lib/party-token'
+import { getCurrentUser } from '@/lib/current-user'
 
-export async function GET(req: NextRequest) {
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
-  if (!token) return new NextResponse('Unauthorized', { status: 401 })
-  return NextResponse.json({ token: token.sub })
+export const dynamic = 'force-dynamic'
+
+/**
+ * GET /api/auth/token
+ * PartyKit WebSocket 接続用の短命 JWT を発行する。
+ * NextAuth セッション or ゲスト cookie のどちらでもOK。
+ */
+export async function GET() {
+  const user = await getCurrentUser()
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+  try {
+    const token = await issuePartyToken({
+      userId: user.id,
+      name: user.name,
+    })
+    return NextResponse.json({ token })
+  } catch {
+    return NextResponse.json(
+      { error: 'Failed to issue token' },
+      { status: 500 }
+    )
+  }
 }
