@@ -30,8 +30,8 @@ export async function POST(req: NextRequest) {
 
   const { roomId, startedAt, results } = parsed.data
 
-  // ゲスト以外のプレイヤーのみ処理対象
-  const registeredResults = results.filter(r => !r.playerId.startsWith('guest:'))
+  // ゲスト・CPU以外の登録済みプレイヤーのみ処理対象
+  const registeredResults = results.filter(r => !r.playerId.startsWith('guest:') && !r.playerId.startsWith('cpu:'))
   if (registeredResults.length === 0) {
     return NextResponse.json({ ok: true })
   }
