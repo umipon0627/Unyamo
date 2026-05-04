@@ -9,7 +9,8 @@ import { createDeck, shuffleDeck, dealCards, drawFromDeck, drawFromDiscardPile }
 import { initializeTurnOrder, advanceTurn, getCurrentPlayerId, isRoundComplete } from '../src/game-logic/turn'
 import {
   validateTurn, validatePhase, validateCardExists,
-  validateDiscardMultiple, validateUnyamo, validateNoDuplicateAction, validateDrawSource
+  validateDiscardMultiple, validateUnyamo, validateNoDuplicateAction, validateDrawSource,
+  validateDiscardPickup, validateDrawPhase, validateDiscardPhase
 } from '../src/game-logic/validation'
 import { judgeWinner } from '../src/game-logic/unyamo'
 
@@ -102,7 +103,12 @@ export default class GameServer implements Party.Server {
   }
 
   private async handleJoin(conn: Party.Connection, token: string) {
-    const identity = await verifyToken(token)
+    // PartyKit では環境変数は room.env 経由でのみ取得可能（process.env では空になる）。
+    // AUTH_SECRET / NEXTAUTH_SECRET のどちらかにフォールバック。
+    const env = this.room.env
+    const rawSecret = env['AUTH_SECRET'] ?? env['NEXTAUTH_SECRET']
+    const secret = typeof rawSecret === 'string' ? rawSecret : undefined
+    const identity = await verifyToken(token, secret)
     if (!identity) {
       send(conn, { type: 'ERROR', payload: { code: 'UNAUTHORIZED', message: 'Invalid token' } })
       conn.close()
@@ -159,6 +165,7 @@ export default class GameServer implements Party.Server {
       hand: [],
       isConnected: true,
       lastActiveAt: Date.now(),
+      hasDrawnThisTurn: false,
       hasActedThisTurn: false,
       hasUsedSpecialAction: false,
     }
@@ -174,8 +181,8 @@ export default class GameServer implements Party.Server {
       send(conn, { type: 'ERROR', payload: { code: 'NOT_HOST', message: 'Only host can start the game' } })
       return
     }
-    if (this.gameState.players.length < 3) {
-      send(conn, { type: 'ERROR', payload: { code: 'NOT_ENOUGH_PLAYERS', message: 'Need at least 3 players' } })
+    if (this.gameState.players.length < 2) {
+      send(conn, { type: 'ERROR', payload: { code: 'NOT_ENOUGH_PLAYERS', message: 'Need at least 2 players' } })
       return
     }
 
@@ -207,6 +214,7 @@ export default class GameServer implements Party.Server {
     const checks = [
       validatePhase(this.gameState, 'DISCARD'),
       validateTurn(this.gameState, info.userId),
+      validateDiscardPhase(player), // 先にDRAWしている必要がある
       validateNoDuplicateAction(player, 'normal'),
       validateCardExists(player.hand, [cardId]),
     ]
@@ -218,9 +226,10 @@ export default class GameServer implements Party.Server {
     }
 
     const card = player.hand.find(c => c.id === cardId)!
+    const discardedCard: Card = { ...card, discardedBy: info.userId }
     this.gameState = {
       ...this.gameState,
-      discardPile: [...this.gameState.discardPile, card],
+      discardPile: [...this.gameState.discardPile, discardedCard],
       players: this.gameState.players.map(p =>
         p.id === info.userId
           ? { ...p, hand: p.hand.filter(c => c.id !== cardId), hasActedThisTurn: true, lastActiveAt: Date.now() }
@@ -228,7 +237,9 @@ export default class GameServer implements Party.Server {
       ),
     }
     send(conn, { type: 'ACTION_RESULT', payload: { success: true, action: 'DISCARD', playerId: info.userId } })
-    this.broadcastGameState()
+
+    // DISCARDでターン終了 → 次プレイヤーへ
+    this.advanceAfterDiscard(info.userId)
   }
 
   private handleDiscardMultiple(conn: Party.Connection, cardIds: string[]) {
@@ -242,6 +253,7 @@ export default class GameServer implements Party.Server {
     const checks = [
       validatePhase(this.gameState, 'DISCARD_MULTIPLE'),
       validateTurn(this.gameState, info.userId),
+      validateDiscardPhase(player), // 先にDRAWしている必要がある
       validateNoDuplicateAction(player, 'special'),
       validateCardExists(player.hand, cardIds),
       validateDiscardMultiple(selectedCards),
@@ -253,9 +265,10 @@ export default class GameServer implements Party.Server {
       }
     }
 
+    const discardedCards: Card[] = selectedCards.map(c => ({ ...c, discardedBy: info.userId }))
     this.gameState = {
       ...this.gameState,
-      discardPile: [...this.gameState.discardPile, ...selectedCards],
+      discardPile: [...this.gameState.discardPile, ...discardedCards],
       players: this.gameState.players.map(p =>
         p.id === info.userId
           ? { ...p, hand: p.hand.filter(c => !cardIds.includes(c.id)), hasActedThisTurn: true, hasUsedSpecialAction: true, lastActiveAt: Date.now() }
@@ -263,7 +276,9 @@ export default class GameServer implements Party.Server {
       ),
     }
     send(conn, { type: 'ACTION_RESULT', payload: { success: true, action: 'DISCARD_MULTIPLE', playerId: info.userId } })
-    this.broadcastGameState()
+
+    // DISCARD_MULTIPLEでターン終了 → 次プレイヤーへ
+    this.advanceAfterDiscard(info.userId)
   }
 
   private handleDraw(conn: Party.Connection, source: 'deck' | 'discard') {
@@ -276,7 +291,9 @@ export default class GameServer implements Party.Server {
     const checks = [
       validatePhase(this.gameState, 'DRAW'),
       validateTurn(this.gameState, info.userId),
+      validateDrawPhase(player), // まだ引いていないこと
       validateDrawSource(this.gameState, source),
+      ...(source === 'discard' ? [validateDiscardPickup(this.gameState, info.userId)] : []),
     ]
     for (const r of checks) {
       if (!r.valid) {
@@ -292,7 +309,8 @@ export default class GameServer implements Party.Server {
       this.gameState = { ...this.gameState, deck: remainingDeck }
     } else {
       const { card, remainingPile } = drawFromDiscardPile(this.gameState.discardPile)
-      drawnCard = card
+      // 拾ったカードからは discardedBy を除去（手札に戻すため）
+      drawnCard = card ? { ...card, discardedBy: undefined } : null
       this.gameState = { ...this.gameState, discardPile: remainingPile }
     }
 
@@ -301,16 +319,32 @@ export default class GameServer implements Party.Server {
     this.gameState = {
       ...this.gameState,
       players: this.gameState.players.map(p =>
-        p.id === info.userId ? { ...p, hand: [...p.hand, drawnCard!], lastActiveAt: Date.now() } : p
+        p.id === info.userId
+          ? { ...p, hand: [...p.hand, drawnCard!], hasDrawnThisTurn: true, lastActiveAt: Date.now() }
+          : p
       ),
     }
+
+    send(conn, { type: 'ACTION_RESULT', payload: { success: true, action: 'DRAW', playerId: info.userId } })
+    // DRAWではターンを進めない。次は同じプレイヤーがDISCARDフェーズへ。
+    this.broadcastGameState()
+    // タイマーは継続（同一ターン内のDISCARD待ち）
+  }
+
+  /**
+   * DISCARD / DISCARD_MULTIPLE 完了後にターンを進める共通処理。
+   * - ウニャモ宣言中は remainingPlayersAfterDeclare を更新
+   * - ラウンド完了なら finalizeGame
+   * - そうでなければ advanceTurn して次のプレイヤーへ
+   */
+  private advanceAfterDiscard(actorId: string) {
+    if (!this.gameState) return
     this.cancelTurnTimeout()
 
-    // ウニャモ宣言後の残プレイヤー処理
     if (this.gameState.unyamoDeclarerId) {
       this.gameState = {
         ...this.gameState,
-        remainingPlayersAfterDeclare: this.gameState.remainingPlayersAfterDeclare.filter(id => id !== info.userId),
+        remainingPlayersAfterDeclare: this.gameState.remainingPlayersAfterDeclare.filter(id => id !== actorId),
       }
     }
 
@@ -320,7 +354,6 @@ export default class GameServer implements Party.Server {
     }
 
     this.gameState = advanceTurn(this.gameState)
-    send(conn, { type: 'ACTION_RESULT', payload: { success: true, action: 'DRAW', playerId: info.userId } })
     this.broadcastMessage({ type: 'TURN_CHANGE', payload: { currentPlayerId: getCurrentPlayerId(this.gameState) } })
     this.broadcastGameState()
     this.scheduleTurnTimeout()
@@ -396,6 +429,30 @@ export default class GameServer implements Party.Server {
     })
     this.broadcastMessage({ type: 'GAME_RESULT', payload: { results: gameResultPayload } })
     this.broadcastGameState()
+
+    // ゲスト以外のプレイヤーが1人でもいればDB保存を試みる
+    const hasRegisteredPlayer = results.some(r => !r.playerId.startsWith('guest:'))
+    if (hasRegisteredPlayer) {
+      const baseUrl = (this.room.env['NEXTAUTH_URL'] as string | undefined) ?? 'http://localhost:3000'
+      const secret = this.room.env['INTERNAL_API_SECRET'] as string | undefined
+      if (secret) {
+        fetch(`${baseUrl}/api/games/result`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-internal-secret': secret },
+          body: JSON.stringify({
+            roomId: this.room.id,
+            startedAt: this.gameState.startedAt ?? Date.now(),
+            results: results.map(r => ({
+              playerId: r.playerId,
+              totalScore: r.totalScore,
+              rank: r.rank,
+              declared: r.declared,
+              isWinner: r.isWinner,
+            })),
+          }),
+        }).catch(() => {}) // 失敗してもゲームは終了済みなので無視
+      }
+    }
   }
 
   private scheduleTurnTimeout() {
@@ -406,42 +463,48 @@ export default class GameServer implements Party.Server {
       if (!this.gameState) return
       const player = this.gameState.players.find(p => p.id === currentPlayerId)
       if (!player) return
-      // 自動操作: 最大点カードを捨てる
-      const maxCard = player.hand.reduce((max, c) => {
+
+      // 自動操作（仕様: 引く→捨てる）。
+      // まだ引いていない場合は山札から1枚引く。
+      if (!player.hasDrawnThisTurn) {
+        const { card, remainingDeck } = drawFromDeck(this.gameState.deck)
+        if (card) {
+          this.gameState = {
+            ...this.gameState,
+            deck: remainingDeck,
+            players: this.gameState.players.map(p =>
+              p.id === currentPlayerId
+                ? { ...p, hand: [...p.hand, card], hasDrawnThisTurn: true }
+                : p
+            ),
+          }
+        }
+      }
+
+      // 次に最大点カードを捨てる。
+      const updatedPlayer = this.gameState.players.find(p => p.id === currentPlayerId)
+      if (!updatedPlayer || updatedPlayer.hand.length === 0) {
+        // 引けず手札も空（山札枯渇）→ ターンだけ進める
+        this.advanceAfterDiscard(currentPlayerId)
+        return
+      }
+      const maxCard = updatedPlayer.hand.reduce((max, c) => {
         const score = c.suit === 'joker' ? 0 : c.rank
         const maxScore = max.suit === 'joker' ? 0 : max.rank
         return score > maxScore ? c : max
-      }, player.hand[0]!)
-      if (!maxCard) return
+      }, updatedPlayer.hand[0]!)
+      const autoDiscarded: Card = { ...maxCard, discardedBy: currentPlayerId }
       this.gameState = {
         ...this.gameState,
-        discardPile: [...this.gameState.discardPile, maxCard],
+        discardPile: [...this.gameState.discardPile, autoDiscarded],
         players: this.gameState.players.map(p =>
-          p.id === currentPlayerId ? { ...p, hand: p.hand.filter(c => c.id !== maxCard.id), hasActedThisTurn: true } : p
+          p.id === currentPlayerId
+            ? { ...p, hand: p.hand.filter(c => c.id !== maxCard.id), hasActedThisTurn: true }
+            : p
         ),
       }
-      // 山札から1枚引く
-      const { card, remainingDeck } = drawFromDeck(this.gameState.deck)
-      if (card) {
-        this.gameState = {
-          ...this.gameState,
-          deck: remainingDeck,
-          players: this.gameState.players.map(p =>
-            p.id === currentPlayerId ? { ...p, hand: [...p.hand, card] } : p
-          ),
-        }
-      }
-      if (this.gameState.unyamoDeclarerId) {
-        this.gameState = {
-          ...this.gameState,
-          remainingPlayersAfterDeclare: this.gameState.remainingPlayersAfterDeclare.filter(id => id !== currentPlayerId),
-        }
-      }
-      if (isRoundComplete(this.gameState)) { this.finalizeGame(); return }
-      this.gameState = advanceTurn(this.gameState)
-      this.broadcastMessage({ type: 'TURN_CHANGE', payload: { currentPlayerId: getCurrentPlayerId(this.gameState) } })
-      this.broadcastGameState()
-      this.scheduleTurnTimeout()
+
+      this.advanceAfterDiscard(currentPlayerId)
     }, TURN_TIMEOUT_MS)
   }
 

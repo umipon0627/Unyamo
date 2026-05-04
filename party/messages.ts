@@ -31,16 +31,34 @@ export interface OtherPlayerView {
   isConnected: boolean
 }
 
+export interface WaitingPlayerView {
+  id: string
+  name: string
+  isConnected: boolean
+}
+
 export interface ClientGameStatePayload {
   phase: string
   myHand: Card[]
   otherPlayers: OtherPlayerView[]
   discardPileTop: Card | null
+  /**
+   * 捨て札の一番上のカードを「自分が拾えるか」。
+   * 直前のプレイヤーが自分以外の場合のみ true。
+   * （仕様: 自分が捨てたカードは自分で拾えない）
+   */
+  canPickupFromDiscard: boolean
   deckCount: number
   currentTurnPlayerId: string
   myTotalScore: number
   canDeclareUnyamo: boolean
   availableActions: string[]
+  // 待機画面用フィールド
+  hostId: string
+  maxPlayers: number
+  roomName: string
+  players: WaitingPlayerView[]
+  canStartGame: boolean
 }
 
 export type ServerMessage =

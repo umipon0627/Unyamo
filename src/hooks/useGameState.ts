@@ -76,5 +76,11 @@ export function useGameState(lastMessage: ServerMessage | null, myPlayerId: stri
     results: state.results,
     unyamoDeclarerId: state.unyamoDeclarerId,
     availableActions: state.gameState?.availableActions ?? [],
+    // 待機画面用フィールド
+    hostId: state.gameState?.hostId ?? '',
+    maxPlayers: state.gameState?.maxPlayers ?? 4,
+    roomName: state.gameState?.roomName ?? '',
+    players: state.gameState?.players ?? [],
+    canStartGame: state.gameState?.canStartGame ?? false,
   }
 }

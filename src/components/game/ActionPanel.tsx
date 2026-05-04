@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button'
 
 interface ActionPanelProps {
   isMyTurn: boolean
-  hasActed: boolean
+  /** すでにDRAWフェーズを終えてDISCARDフェーズに入っているか */
+  hasDrawn: boolean
   canDrawDeck: boolean
   canDrawDiscard: boolean
   selectedCount: number
@@ -16,7 +17,7 @@ interface ActionPanelProps {
 }
 
 export function ActionPanel({
-  isMyTurn, hasActed, canDrawDeck, canDrawDiscard,
+  isMyTurn, hasDrawn, canDrawDeck, canDrawDiscard,
   selectedCount, hasUsedSpecial, onDraw, onDiscard, onDiscardMultiple, disabled = false
 }: ActionPanelProps) {
   if (!isMyTurn) {
@@ -29,27 +30,8 @@ export function ActionPanel({
 
   return (
     <div className="flex flex-wrap gap-2 justify-center p-2">
-      {!hasActed && selectedCount === 1 && (
-        <Button
-          size="sm"
-          className="bg-emerald-600 hover:bg-emerald-700"
-          onClick={onDiscard}
-          disabled={disabled}
-        >
-          1枚捨てる
-        </Button>
-      )}
-      {!hasActed && selectedCount >= 2 && !hasUsedSpecial && (
-        <Button
-          size="sm"
-          className="bg-emerald-600 hover:bg-emerald-700"
-          onClick={onDiscardMultiple}
-          disabled={disabled}
-        >
-          {selectedCount}枚まとめて捨てる
-        </Button>
-      )}
-      {hasActed && canDrawDeck && (
+      {/* DRAW_PHASE: 山札から引く / 捨て札から拾う */}
+      {!hasDrawn && canDrawDeck && (
         <Button
           size="sm"
           variant="outline"
@@ -60,7 +42,7 @@ export function ActionPanel({
           山札から引く
         </Button>
       )}
-      {hasActed && canDrawDiscard && (
+      {!hasDrawn && canDrawDiscard && (
         <Button
           size="sm"
           variant="outline"
@@ -68,8 +50,36 @@ export function ActionPanel({
           onClick={() => onDraw('discard')}
           disabled={disabled}
         >
-          捨て札から引く
+          捨て札から拾う
         </Button>
+      )}
+      {!hasDrawn && !canDrawDeck && !canDrawDiscard && (
+        <span className="text-slate-500 text-sm py-1">引けるカードがありません</span>
+      )}
+
+      {/* DISCARD_PHASE: 1枚捨てる / まとめて捨てる */}
+      {hasDrawn && selectedCount === 1 && (
+        <Button
+          size="sm"
+          className="bg-emerald-600 hover:bg-emerald-700"
+          onClick={onDiscard}
+          disabled={disabled}
+        >
+          1枚捨てる
+        </Button>
+      )}
+      {hasDrawn && selectedCount >= 2 && !hasUsedSpecial && (
+        <Button
+          size="sm"
+          className="bg-emerald-600 hover:bg-emerald-700"
+          onClick={onDiscardMultiple}
+          disabled={disabled}
+        >
+          {selectedCount}枚まとめて捨てる
+        </Button>
+      )}
+      {hasDrawn && selectedCount === 0 && (
+        <span className="text-slate-500 text-sm py-1">捨てるカードを選んでください</span>
       )}
     </div>
   )

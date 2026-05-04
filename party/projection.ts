@@ -21,15 +21,33 @@ export function projectStateForPlayer(
 
   const availableActions: string[] = []
   const currentPlayerId = state.turnOrder[state.currentTurnIndex]
+  // ウニャモ宣言はターンの最初（DRAWの前）にのみ可能。
+  // ターンの流れ: [ウニャモ宣言 or DRAW] → DISCARD → ターン終了
   if (currentPlayerId === playerId && state.phase === 'PLAYING') {
-    if (!me?.hasActedThisTurn) {
+    if (!me?.hasDrawnThisTurn) {
+      // DRAW_PHASE: 山札から引く / 捨て札から拾う / ウニャモ宣言
+      availableActions.push('DRAW')
+      if (canDeclareUnyamo(myHand)) availableActions.push('DECLARE_UNYAMO')
+    } else if (!me?.hasActedThisTurn) {
+      // DISCARD_PHASE: 1枚捨てる / 特殊操作で2-3枚捨てる
       availableActions.push('DISCARD')
       if (!me?.hasUsedSpecialAction) availableActions.push('DISCARD_MULTIPLE')
-      if (canDeclareUnyamo(myHand)) availableActions.push('DECLARE_UNYAMO')
-    } else {
-      availableActions.push('DRAW')
     }
   }
+
+  const canStartGame =
+    state.phase === 'WAITING' &&
+    state.players.length >= 2 &&
+    playerId === state.hostId
+
+  const discardTop = state.discardPile[state.discardPile.length - 1] ?? null
+  // 捨て札から拾えるのは「DRAWフェーズ」かつ「自分が捨てたカードでない」場合のみ。
+  const canPickupFromDiscard =
+    !!discardTop &&
+    discardTop.discardedBy !== playerId &&
+    !me?.hasDrawnThisTurn &&
+    currentPlayerId === playerId &&
+    state.phase === 'PLAYING'
 
   return {
     phase: state.phase,
@@ -42,11 +60,21 @@ export function projectStateForPlayer(
         cardCount: p.hand.length,
         isConnected: p.isConnected,
       })),
-    discardPileTop: state.discardPile[state.discardPile.length - 1] ?? null,
+    discardPileTop: discardTop,
+    canPickupFromDiscard,
     deckCount: state.deck.length,
     currentTurnPlayerId: currentPlayerId ?? '',
     myTotalScore: calculateHandScore(myHand),
     canDeclareUnyamo: canDeclareUnyamo(myHand),
     availableActions,
+    hostId: state.hostId,
+    maxPlayers: state.roomConfig.maxPlayers,
+    roomName: escapeHtml(state.roomConfig.roomName),
+    players: state.players.map(p => ({
+      id: p.id,
+      name: escapeHtml(p.name),
+      isConnected: p.isConnected,
+    })),
+    canStartGame,
   }
 }

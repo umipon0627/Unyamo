@@ -29,6 +29,7 @@ export function advanceTurn(state: GameState): GameState {
   }
   const updatedPlayers = state.players.map(p => ({
     ...p,
+    hasDrawnThisTurn: false,
     hasActedThisTurn: false,
     hasUsedSpecialAction: false,
   }))

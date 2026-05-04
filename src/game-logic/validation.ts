@@ -65,6 +65,37 @@ export function validateNoDuplicateAction(
   return { valid: true }
 }
 
+/**
+ * DRAW_PHASE（引くフェーズ）の検証。
+ * 仕様: ターンの最初に「山札から引く」または「捨て札から拾う」を必ず1回だけ実行する。
+ * すでに引き終わっている場合は再度引けない（その後は捨てるフェーズ）。
+ */
+export function validateDrawPhase(player: PlayerState): ValidationResult {
+  if (player.hasDrawnThisTurn) {
+    return {
+      valid: false,
+      code: 'ALREADY_DREW',
+      message: 'Already drew a card this turn (now in discard phase)',
+    }
+  }
+  return { valid: true }
+}
+
+/**
+ * DISCARD_PHASE（捨てるフェーズ）の検証。
+ * 仕様: 手札からカードを捨てるには、先に山札 or 捨て札から1枚引いている必要がある。
+ */
+export function validateDiscardPhase(player: PlayerState): ValidationResult {
+  if (!player.hasDrawnThisTurn) {
+    return {
+      valid: false,
+      code: 'MUST_DRAW_FIRST',
+      message: 'You must draw a card first before discarding',
+    }
+  }
+  return { valid: true }
+}
+
 export function validateDrawSource(
   state: GameState,
   source: 'deck' | 'discard'
@@ -74,6 +105,28 @@ export function validateDrawSource(
   }
   if (source === 'discard' && state.discardPile.length === 0) {
     return { valid: false, code: 'DISCARD_EMPTY', message: 'Discard pile is empty' }
+  }
+  return { valid: true }
+}
+
+/**
+ * 捨て札の一番上が「自分が直前に捨てたカード」でないことを検証する。
+ * 自分が捨てたカードを自分で拾うのは反則（仕様: 直前のプレイヤーが捨てたカードのみ拾える）。
+ */
+export function validateDiscardPickup(
+  state: GameState,
+  playerId: string
+): ValidationResult {
+  const top = state.discardPile[state.discardPile.length - 1]
+  if (!top) {
+    return { valid: false, code: 'DISCARD_EMPTY', message: 'Discard pile is empty' }
+  }
+  if (top.discardedBy === playerId) {
+    return {
+      valid: false,
+      code: 'OWN_DISCARD_PICKUP',
+      message: 'Cannot pick up a card you discarded yourself',
+    }
   }
   return { valid: true }
 }
