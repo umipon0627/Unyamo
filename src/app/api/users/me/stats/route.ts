@@ -1,24 +1,39 @@
 export const dynamic = 'force-dynamic'
 
-import { auth } from '@/lib/auth'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { checkRateLimit } from '@/lib/rate-limit'
+import { getCurrentUser } from '@/lib/current-user'
 
 function getIp(req: NextRequest): string {
   return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? '127.0.0.1'
 }
 
 export async function GET(req: NextRequest) {
-  const session = await auth()
-  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const user = await getCurrentUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const rl = checkRateLimit(getIp(req), session.user.id)
+  const rl = checkRateLimit(getIp(req), user.id)
   if (!rl.allowed) return NextResponse.json({ error: rl.reason }, { status: 429 })
 
+  // ゲストはDBに記録を持たないため空の戦績を返す
+  if (user.isGuest) {
+    return NextResponse.json({
+      stats: {
+        gamesPlayed: 0,
+        gamesWon: 0,
+        gamesLost: 0,
+        winRate: 0,
+        totalScore: 0,
+        recentGames: [],
+        isGuest: true,
+      },
+    })
+  }
+
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
       select: {
         gamesPlayed: true,
         gamesWon: true,
@@ -38,20 +53,20 @@ export async function GET(req: NextRequest) {
       },
     })
 
-    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    if (!dbUser) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-    const winRate = user.gamesPlayed > 0
-      ? Math.round((user.gamesWon / user.gamesPlayed) * 100)
+    const winRate = dbUser.gamesPlayed > 0
+      ? Math.round((dbUser.gamesWon / dbUser.gamesPlayed) * 100)
       : 0
 
     return NextResponse.json({
       stats: {
-        gamesPlayed: user.gamesPlayed,
-        gamesWon: user.gamesWon,
-        gamesLost: user.gamesLost,
+        gamesPlayed: dbUser.gamesPlayed,
+        gamesWon: dbUser.gamesWon,
+        gamesLost: dbUser.gamesLost,
         winRate,
-        totalScore: user.totalScore,
-        recentGames: user.gameResults,
+        totalScore: dbUser.totalScore,
+        recentGames: dbUser.gameResults,
       },
     })
   } catch {
