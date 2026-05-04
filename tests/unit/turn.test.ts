@@ -5,7 +5,7 @@ import type { Card } from '@/types/card'
 
 const makePlayer = (id: string, isConnected = true): PlayerState => ({
   id, name: id, hand: [], isConnected, lastActiveAt: Date.now(),
-  hasActedThisTurn: false, hasUsedSpecialAction: false,
+  hasDrawnThisTurn: false, hasActedThisTurn: false, hasUsedSpecialAction: false,
 })
 
 const makeState = (overrides: Partial<GameState> = {}): GameState => ({

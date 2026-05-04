@@ -1,36 +1,62 @@
 import { test, expect } from '@playwright/test'
 
-// E2Eテスト: 実際のOAuth認証が必要なため、開発環境では手動実行
-// CI環境: シークレット設定後にpnpx playwright test で実行
-
-test.describe('Unyamo Game Flow', () => {
-  test.skip('ランディングページが表示される', async ({ page }) => {
-    await page.goto('http://localhost:3000')
-    await expect(page.getByText('Unyamo')).toBeVisible()
-    await expect(page.getByText('ログインして遊ぶ')).toBeVisible()
+test.describe('ランディング・ログインページ', () => {
+  test('ランディングページが表示される', async ({ page }) => {
+    await page.goto('/')
+    await expect(page.getByRole('heading', { name: 'Unyamo' })).toBeVisible()
+    await expect(page.getByRole('link', { name: '遊ぶ' })).toBeVisible()
   })
 
-  test.skip('未ログインでロビーにアクセスするとログインページへリダイレクト', async ({ page }) => {
-    await page.goto('http://localhost:3000/lobby')
+  test('未ログインでロビーにアクセスするとログインページへリダイレクト', async ({ page }) => {
+    await page.goto('/lobby')
     await expect(page).toHaveURL(/login/)
   })
 
-  test.skip('ログインページにGoogle/GitHubボタンが表示される', async ({ page }) => {
-    await page.goto('http://localhost:3000/login')
+  test('ログインページにGoogle/GitHubボタンとゲストボタンが表示される', async ({ page }) => {
+    await page.goto('/login')
     await expect(page.getByText('Google でログイン')).toBeVisible()
     await expect(page.getByText('GitHub でログイン')).toBeVisible()
+    await expect(page.getByText('ゲストとして参加')).toBeVisible()
+  })
+})
+
+test.describe('ゲストフロー', () => {
+  test('ゲストとして参加するとロビーに遷移する', async ({ page }) => {
+    await page.goto('/login')
+    await page.getByText('ゲストとして参加').click()
+    await expect(page).toHaveURL(/lobby/, { timeout: 10_000 })
+    await expect(page.getByText('ゲストモード')).toBeVisible()
   })
 
-  // 以下のテストはOAuth認証が必要なため手動実行
-  test.skip('ルーム作成からゲーム開始まで', async ({ page }) => {
-    // 1. ログイン（セッションCookieを事前設定する必要あり）
-    // 2. ロビーでルーム作成
-    await page.goto('http://localhost:3000/lobby')
+  test('ゲストでロビー → ルーム作成ダイアログが開く', async ({ page }) => {
+    await page.goto('/login')
+    await page.getByText('ゲストとして参加').click()
+    await expect(page).toHaveURL(/lobby/, { timeout: 10_000 })
     await page.getByText('ルームを作成').click()
-    // 3. ルーム名入力
-    await page.fill('input[id="roomName"]', 'テストルーム')
-    await page.getByText('作成して入室').click()
-    // 4. ゲームルームに遷移
-    await expect(page).toHaveURL(/\/room\//)
+    await expect(page.getByRole('dialog')).toBeVisible()
+  })
+
+  test('ゲストでルーム作成からゲームルームへ遷移', async ({ page }) => {
+    await page.goto('/login')
+    await page.getByText('ゲストとして参加').click()
+    await expect(page).toHaveURL(/lobby/, { timeout: 10_000 })
+
+    await page.getByText('ルームを作成').click()
+    await expect(page.getByRole('dialog')).toBeVisible()
+
+    await page.fill('input[id="roomName"]', 'E2Eテストルーム')
+    await page.getByRole('button', { name: '作成して入室' }).click()
+
+    await expect(page).toHaveURL(/\/room\//, { timeout: 10_000 })
+  })
+})
+
+// OAuthを必要とするテストは手動実行
+test.describe('OAuth認証フロー', () => {
+  test.skip('Google OAuth ログイン後にロビーへ遷移', async ({ page }) => {
+    await page.goto('/login')
+    await page.getByText('Google でログイン').click()
+    // OAuth リダイレクト先は外部なので手動確認
+    await expect(page).toHaveURL(/accounts\.google\.com/)
   })
 })

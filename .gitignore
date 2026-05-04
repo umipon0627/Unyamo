@@ -11,3 +11,6 @@ public/sw.js.map
 public/workbox-*.js
 public/workbox-*.js.map
 .vercel
+.playwright-mcp/
+*.png
+tsconfig.tsbuildinfo

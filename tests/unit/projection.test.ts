@@ -6,7 +6,7 @@ import type { Card } from '@/types/card'
 const makeCard = (rank: number, id = `card-${rank}`): Card => ({ id, suit: 'spades', rank })
 const makePlayer = (id: string, hand: Card[], isConnected = true): PlayerState => ({
   id, name: id, hand, isConnected, lastActiveAt: Date.now(),
-  hasActedThisTurn: false, hasUsedSpecialAction: false,
+  hasDrawnThisTurn: false, hasActedThisTurn: false, hasUsedSpecialAction: false,
 })
 
 const makeState = (players: PlayerState[]): GameState => ({
@@ -44,5 +44,34 @@ describe('projectStateForPlayer', () => {
     const state = makeState([makePlayer('me', [])])
     const projected = projectStateForPlayer(state, 'me')
     expect(projected.discardPileTop?.rank).toBe(3)
+  })
+
+  it('canPickupFromDiscard is false when top was discarded by self', () => {
+    const ownDiscard: Card = { id: 'own', suit: 'hearts', rank: 7, discardedBy: 'me' }
+    const state: GameState = {
+      ...makeState([makePlayer('me', []), makePlayer('other', [])]),
+      discardPile: [ownDiscard],
+    }
+    const projected = projectStateForPlayer(state, 'me')
+    expect(projected.canPickupFromDiscard).toBe(false)
+  })
+
+  it('canPickupFromDiscard is true when top was discarded by another player', () => {
+    const otherDiscard: Card = { id: 'other-d', suit: 'hearts', rank: 7, discardedBy: 'other' }
+    const state: GameState = {
+      ...makeState([makePlayer('me', []), makePlayer('other', [])]),
+      discardPile: [otherDiscard],
+    }
+    const projected = projectStateForPlayer(state, 'me')
+    expect(projected.canPickupFromDiscard).toBe(true)
+  })
+
+  it('canPickupFromDiscard is false when discard pile is empty', () => {
+    const state: GameState = {
+      ...makeState([makePlayer('me', [])]),
+      discardPile: [],
+    }
+    const projected = projectStateForPlayer(state, 'me')
+    expect(projected.canPickupFromDiscard).toBe(false)
   })
 })

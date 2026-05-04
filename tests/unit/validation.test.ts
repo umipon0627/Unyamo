@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import {
   validateTurn, validatePhase, validateCardExists,
-  validateDiscardMultiple, validateUnyamo, validateNoDuplicateAction, validateDrawSource
+  validateDiscardMultiple, validateUnyamo, validateNoDuplicateAction, validateDrawSource,
+  validateDiscardPickup
 } from '@/game-logic/validation'
 import type { GameState, PlayerState } from '@/types/game'
 import type { Card } from '@/types/card'
@@ -92,5 +93,29 @@ describe('validateDrawSource', () => {
   it('valid when both piles have cards', () => {
     expect(validateDrawSource(makeState(), 'deck').valid).toBe(true)
     expect(validateDrawSource(makeState(), 'discard').valid).toBe(true)
+  })
+})
+
+describe('validateDiscardPickup', () => {
+  it('invalid when discard pile is empty', () => {
+    const r = validateDiscardPickup(makeState({ discardPile: [] }), 'player1')
+    expect(r.valid).toBe(false)
+    if (!r.valid) expect(r.code).toBe('DISCARD_EMPTY')
+  })
+  it('invalid when top was discarded by self (cannot pick up own discard)', () => {
+    const ownDiscard: Card = { id: 'own', suit: 'hearts', rank: 7, discardedBy: 'player1' }
+    const r = validateDiscardPickup(makeState({ discardPile: [ownDiscard] }), 'player1')
+    expect(r.valid).toBe(false)
+    if (!r.valid) expect(r.code).toBe('OWN_DISCARD_PICKUP')
+  })
+  it('valid when top was discarded by another player', () => {
+    const otherDiscard: Card = { id: 'other', suit: 'hearts', rank: 7, discardedBy: 'player2' }
+    const r = validateDiscardPickup(makeState({ discardPile: [otherDiscard] }), 'player1')
+    expect(r.valid).toBe(true)
+  })
+  it('valid when top has no discardedBy (legacy / pre-rule card)', () => {
+    const legacyDiscard: Card = { id: 'legacy', suit: 'hearts', rank: 7 }
+    const r = validateDiscardPickup(makeState({ discardPile: [legacyDiscard] }), 'player1')
+    expect(r.valid).toBe(true)
   })
 })

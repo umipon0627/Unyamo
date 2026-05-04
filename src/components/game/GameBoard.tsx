@@ -14,6 +14,7 @@ import { ActionPanel } from './ActionPanel'
 import { UnyamoButton } from './UnyamoButton'
 import { TurnIndicator } from './TurnIndicator'
 import { ResultModal } from './ResultModal'
+import { WaitingRoom } from './WaitingRoom'
 
 interface GameBoardProps {
   roomId: string
@@ -24,7 +25,7 @@ interface GameBoardProps {
 export function GameBoard({ roomId, myPlayerId, token }: GameBoardProps) {
   const router = useRouter()
   const { status, send, lastMessage } = useWebSocket(roomId, token)
-  const { gameState, myHand, discardTop, currentPlayerId, phase, isMyTurn, results, unyamoDeclarerId, availableActions } = useGameState(lastMessage, myPlayerId)
+  const { gameState, myHand, discardTop, currentPlayerId, phase, isMyTurn, results, unyamoDeclarerId, availableActions, hostId, maxPlayers, roomName, players, canStartGame } = useGameState(lastMessage, myPlayerId)
   const { showUnyamoFlash, triggerUnyamoFlash } = useAnimation()
   const [selectedIndices, setSelectedIndices] = useState<number[]>([])
 
@@ -59,11 +60,14 @@ export function GameBoard({ roomId, myPlayerId, token }: GameBoardProps) {
     send({ type: 'DECLARE_UNYAMO' })
   }, [send, triggerUnyamoFlash])
 
-  const hasActed = !availableActions.includes('DISCARD') && !availableActions.includes('DISCARD_MULTIPLE')
+  const hasDrawn = availableActions.includes('DISCARD') || availableActions.includes('DISCARD_MULTIPLE')
   const canDrawDeck = availableActions.includes('DRAW') && (gameState?.deckCount ?? 0) > 0
-  const canDrawDiscard = availableActions.includes('DRAW') && !!discardTop
+  const canDrawDiscard =
+    availableActions.includes('DRAW') &&
+    !!discardTop &&
+    (gameState?.canPickupFromDiscard ?? false)
   const canDeclare = availableActions.includes('DECLARE_UNYAMO')
-  const hasUsedSpecial = !availableActions.includes('DISCARD_MULTIPLE') && !hasActed
+  const hasUsedSpecial = !availableActions.includes('DISCARD_MULTIPLE') && hasDrawn
 
   if (status === 'connecting') {
     return <div className="flex items-center justify-center h-screen text-slate-400">接続中...</div>
@@ -71,13 +75,23 @@ export function GameBoard({ roomId, myPlayerId, token }: GameBoardProps) {
   if (status === 'error' || status === 'closed') {
     return <div className="flex items-center justify-center h-screen text-red-400">接続エラー。ページを再読み込みしてください。</div>
   }
-  if (phase === 'WAITING' || !gameState) {
+  if (phase === 'WAITING') {
     return (
-      <div className="flex flex-col items-center justify-center h-screen gap-4 text-slate-300">
-        <p>プレイヤーを待っています...</p>
-        <p className="text-slate-500 text-sm">ルームID: {roomId}</p>
-      </div>
+      <WaitingRoom
+        roomId={roomId}
+        roomName={roomName}
+        players={players}
+        hostId={hostId}
+        maxPlayers={maxPlayers}
+        myPlayerId={myPlayerId}
+        canStartGame={canStartGame}
+        onStartGame={() => send({ type: 'START_GAME' })}
+        onLeaveRoom={() => router.push('/lobby')}
+      />
     )
+  }
+  if (!gameState) {
+    return <div className="flex items-center justify-center h-screen text-slate-400">接続中...</div>
   }
 
   return (
@@ -154,14 +168,14 @@ export function GameBoard({ roomId, myPlayerId, token }: GameBoardProps) {
           <Hand
             cards={myHand}
             selectedIndices={selectedIndices}
-            onSelect={isMyTurn && !hasActed ? handleCardSelect : undefined}
+            onSelect={isMyTurn && hasDrawn ? handleCardSelect : undefined}
             size="md"
             isMobile
           />
           <div className="flex items-center gap-3 flex-wrap justify-center">
             <ActionPanel
               isMyTurn={isMyTurn}
-              hasActed={hasActed}
+              hasDrawn={hasDrawn}
               canDrawDeck={canDrawDeck}
               canDrawDiscard={canDrawDiscard}
               selectedCount={selectedIndices.length}
