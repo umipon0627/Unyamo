@@ -10,25 +10,19 @@ import { initializeTurnOrder, advanceTurn, getCurrentPlayerId, isRoundComplete }
 import {
   validateTurn, validatePhase, validateCardExists,
   validateDiscardMultiple, validateUnyamo, validateNoDuplicateAction, validateDrawSource,
-  validateDiscardPickup, validateDrawPhase, validateDiscardPhase
+  validateDiscardPickup, validateDrawPhase, validateDiscardPhase,
+  validateUnyamoNotYetDeclared,
 } from '../src/game-logic/validation'
 import { judgeWinner } from '../src/game-logic/unyamo'
 import { decideUnyamoDeclaration, decideDrawSource, decideDiscard } from '../src/game-logic/cpu'
 import type { CpuDifficulty } from '../src/game-logic/cpu'
-
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;').replace(/'/g, '&#039;')
-}
+import { escapeHtml } from './utils'
+import { TURN_TIMEOUT_MS } from './timeout'
+import { RECONNECT_TIMEOUT_MS, ROOM_DESTROY_TIMEOUT_MS } from './connection'
 
 function send(conn: Party.Connection, msg: ServerMessage): void {
   conn.send(JSON.stringify(msg))
 }
-
-const TURN_TIMEOUT_MS = 30_000
-const RECONNECT_TIMEOUT_MS = 5 * 60_000
-const ROOM_DESTROY_TIMEOUT_MS = 30 * 60_000
 
 export default class GameServer implements Party.Server {
   gameState: GameState | null = null
@@ -301,25 +295,20 @@ export default class GameServer implements Party.Server {
     const player = this.gameState.players.find(p => p.id === cpuId)
     if (!player) return
 
-    // ウニャモ宣言チェック（DRAWフェーズでのみ可能）
+    // ウニャモ宣言チェック（DRAWフェーズでのみ可能。すでに誰かが宣言済みなら不可）
     if (!player.hasDrawnThisTurn) {
-      const shouldDeclare = decideUnyamoDeclaration(player.hand, this.cpuDifficulty)
-      if (shouldDeclare) {
-        this.performDeclareUnyamo(cpuId)
-        this.scheduleCpuActionIfNeeded()
-        return
+      if (this.gameState.unyamoDeclarerId === null) {
+        const shouldDeclare = decideUnyamoDeclaration(player.hand, this.cpuDifficulty)
+        if (shouldDeclare) {
+          this.performDeclareUnyamo(cpuId)
+          this.scheduleCpuActionIfNeeded()
+          return
+        }
       }
 
-      // DRAW
+      // DRAW: 仕様 2.3節「捨て札の一番上から1枚引く」（誰が捨てたかは関係ない）
       const discardTop = this.gameState.discardPile[this.gameState.discardPile.length - 1] ?? null
-      const prevPlayerId = this.gameState.turnOrder[
-        (this.gameState.currentTurnIndex - 1 + this.gameState.turnOrder.length) % this.gameState.turnOrder.length
-      ]
-      const canPickupFromDiscard =
-        !!discardTop &&
-        !!prevPlayerId &&
-        discardTop.discardedBy === prevPlayerId &&
-        prevPlayerId !== cpuId
+      const canPickupFromDiscard = !!discardTop
 
       const source = decideDrawSource(
         player.hand,
@@ -371,7 +360,7 @@ export default class GameServer implements Party.Server {
       this.gameState = { ...this.gameState, deck: remainingDeck }
     } else {
       const { card, remainingPile } = drawFromDiscardPile(this.gameState.discardPile)
-      drawnCard = card ? { ...card, discardedBy: undefined } : null
+      drawnCard = card
       this.gameState = { ...this.gameState, discardPile: remainingPile }
     }
 
@@ -412,10 +401,9 @@ export default class GameServer implements Party.Server {
       }
 
       const card = player.hand.find(c => c.id === cardId)!
-      const discardedCard: Card = { ...card, discardedBy: playerId }
       this.gameState = {
         ...this.gameState,
-        discardPile: [...this.gameState.discardPile, discardedCard],
+        discardPile: [...this.gameState.discardPile, card],
         players: this.gameState.players.map(p =>
           p.id === playerId
             ? { ...p, hand: p.hand.filter(c => c.id !== cardId), hasActedThisTurn: true, lastActiveAt: Date.now() }
@@ -437,10 +425,9 @@ export default class GameServer implements Party.Server {
         if (!r.valid) return
       }
 
-      const discardedCards: Card[] = selectedCards.map(c => ({ ...c, discardedBy: playerId }))
       this.gameState = {
         ...this.gameState,
-        discardPile: [...this.gameState.discardPile, ...discardedCards],
+        discardPile: [...this.gameState.discardPile, ...selectedCards],
         players: this.gameState.players.map(p =>
           p.id === playerId
             ? { ...p, hand: p.hand.filter(c => !cardIds.includes(c.id)), hasActedThisTurn: true, hasUsedSpecialAction: true, lastActiveAt: Date.now() }
@@ -463,6 +450,7 @@ export default class GameServer implements Party.Server {
     const checks = [
       validatePhase(this.gameState, 'DECLARE_UNYAMO'),
       validateTurn(this.gameState, playerId),
+      validateUnyamoNotYetDeclared(this.gameState),
       validateUnyamo(player.hand),
     ]
     for (const r of checks) {
@@ -514,10 +502,9 @@ export default class GameServer implements Party.Server {
     }
 
     const card = player.hand.find(c => c.id === cardId)!
-    const discardedCard: Card = { ...card, discardedBy: info.userId }
     this.gameState = {
       ...this.gameState,
-      discardPile: [...this.gameState.discardPile, discardedCard],
+      discardPile: [...this.gameState.discardPile, card],
       players: this.gameState.players.map(p =>
         p.id === info.userId
           ? { ...p, hand: p.hand.filter(c => c.id !== cardId), hasActedThisTurn: true, lastActiveAt: Date.now() }
@@ -552,10 +539,9 @@ export default class GameServer implements Party.Server {
       }
     }
 
-    const discardedCards: Card[] = selectedCards.map(c => ({ ...c, discardedBy: info.userId }))
     this.gameState = {
       ...this.gameState,
-      discardPile: [...this.gameState.discardPile, ...discardedCards],
+      discardPile: [...this.gameState.discardPile, ...selectedCards],
       players: this.gameState.players.map(p =>
         p.id === info.userId
           ? { ...p, hand: p.hand.filter(c => !cardIds.includes(c.id)), hasActedThisTurn: true, hasUsedSpecialAction: true, lastActiveAt: Date.now() }
@@ -595,7 +581,7 @@ export default class GameServer implements Party.Server {
       this.gameState = { ...this.gameState, deck: remainingDeck }
     } else {
       const { card, remainingPile } = drawFromDiscardPile(this.gameState.discardPile)
-      drawnCard = card ? { ...card, discardedBy: undefined } : null
+      drawnCard = card
       this.gameState = { ...this.gameState, discardPile: remainingPile }
     }
 
@@ -654,6 +640,7 @@ export default class GameServer implements Party.Server {
     const checks = [
       validatePhase(this.gameState, 'DECLARE_UNYAMO'),
       validateTurn(this.gameState, info.userId),
+      validateUnyamoNotYetDeclared(this.gameState),
       validateUnyamo(player.hand),
     ]
     for (const r of checks) {
@@ -783,10 +770,9 @@ export default class GameServer implements Party.Server {
         const maxScore = max.suit === 'joker' ? 0 : max.rank
         return score > maxScore ? c : max
       }, updatedPlayer.hand[0]!)
-      const autoDiscarded: Card = { ...maxCard, discardedBy: currentPlayerId }
       this.gameState = {
         ...this.gameState,
-        discardPile: [...this.gameState.discardPile, autoDiscarded],
+        discardPile: [...this.gameState.discardPile, maxCard],
         players: this.gameState.players.map(p =>
           p.id === currentPlayerId
             ? { ...p, hand: p.hand.filter(c => c.id !== maxCard.id), hasActedThisTurn: true }

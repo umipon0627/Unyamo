@@ -46,21 +46,12 @@ describe('projectStateForPlayer', () => {
     expect(projected.discardPileTop?.rank).toBe(3)
   })
 
-  it('canPickupFromDiscard is false when top was discarded by self', () => {
-    const ownDiscard: Card = { id: 'own', suit: 'hearts', rank: 7, discardedBy: 'me' }
+  it('canPickupFromDiscard is true when discard pile has any card on my turn (regardless of who discarded)', () => {
+    // 仕様 2.3節: 捨て札の一番上から1枚引く。誰が捨てたかは関係ない。
+    const topCard: Card = { id: 'top', suit: 'hearts', rank: 7 }
     const state: GameState = {
       ...makeState([makePlayer('me', []), makePlayer('other', [])]),
-      discardPile: [ownDiscard],
-    }
-    const projected = projectStateForPlayer(state, 'me')
-    expect(projected.canPickupFromDiscard).toBe(false)
-  })
-
-  it('canPickupFromDiscard is true when top was discarded by another player', () => {
-    const otherDiscard: Card = { id: 'other-d', suit: 'hearts', rank: 7, discardedBy: 'other' }
-    const state: GameState = {
-      ...makeState([makePlayer('me', []), makePlayer('other', [])]),
-      discardPile: [otherDiscard],
+      discardPile: [topCard],
     }
     const projected = projectStateForPlayer(state, 'me')
     expect(projected.canPickupFromDiscard).toBe(true)
@@ -73,5 +64,39 @@ describe('projectStateForPlayer', () => {
     }
     const projected = projectStateForPlayer(state, 'me')
     expect(projected.canPickupFromDiscard).toBe(false)
+  })
+
+  it('canPickupFromDiscard is false when not my turn', () => {
+    const topCard: Card = { id: 'top', suit: 'hearts', rank: 7 }
+    const state: GameState = {
+      ...makeState([makePlayer('me', []), makePlayer('other', [])]),
+      discardPile: [topCard],
+      currentTurnIndex: 1, // other's turn
+    }
+    const projected = projectStateForPlayer(state, 'me')
+    expect(projected.canPickupFromDiscard).toBe(false)
+  })
+
+  it('canPickupFromDiscard is false when already drew this turn', () => {
+    const topCard: Card = { id: 'top', suit: 'hearts', rank: 7 }
+    const me = { ...makePlayer('me', []), hasDrawnThisTurn: true }
+    const state: GameState = {
+      ...makeState([me, makePlayer('other', [])]),
+      discardPile: [topCard],
+    }
+    const projected = projectStateForPlayer(state, 'me')
+    expect(projected.canPickupFromDiscard).toBe(false)
+  })
+
+  it('DECLARE_UNYAMO is not in availableActions when someone has already declared', () => {
+    // 仕様 2.4節: 1ラウンドにつき宣言者は1人のみ。
+    const myHand = [makeCard(1)] // 1点 → canDeclareUnyamo=true
+    const state: GameState = {
+      ...makeState([makePlayer('me', myHand), makePlayer('other', [])]),
+      unyamoDeclarerId: 'other',
+    }
+    const projected = projectStateForPlayer(state, 'me')
+    expect(projected.availableActions).not.toContain('DECLARE_UNYAMO')
+    expect(projected.canDeclareUnyamo).toBe(false)
   })
 })

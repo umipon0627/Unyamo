@@ -1,7 +1,6 @@
 import type { Card } from '@/types/card'
 import type { GameState, PlayerState } from '@/types/game'
 import { calculateHandScore } from './scoring'
-import { getPreviousPlayerId } from './turn'
 
 export type ValidationResult =
   | { valid: true }
@@ -110,20 +109,31 @@ export function validateDrawSource(
   return { valid: true }
 }
 
+/**
+ * 捨て札の一番上から拾えるかを検証する。
+ * 仕様 2.3節: 「山札または捨て札の一番上から1枚引く」のみ。
+ * 誰が捨てたかに関係なく、捨て札が空でなければ拾える。
+ */
 export function validateDiscardPickup(
   state: GameState,
-  playerId: string
+  _playerId: string
 ): ValidationResult {
-  const top = state.discardPile[state.discardPile.length - 1]
-  if (!top) {
+  if (state.discardPile.length === 0) {
     return { valid: false, code: 'DISCARD_EMPTY', message: 'Discard pile is empty' }
   }
-  const prevPlayerId = getPreviousPlayerId(state)
-  if (!prevPlayerId || top.discardedBy !== prevPlayerId) {
+  return { valid: true }
+}
+
+/**
+ * ウニャモがまだ宣言されていないことを検証する。
+ * 仕様 2.4節: 1ラウンドにつき宣言者は1人のみ（unyamoDeclarerId は単数）。
+ */
+export function validateUnyamoNotYetDeclared(state: GameState): ValidationResult {
+  if (state.unyamoDeclarerId !== null) {
     return {
       valid: false,
-      code: 'NOT_PREVIOUS_PLAYER_DISCARD',
-      message: 'Can only pick up the card discarded by the previous player',
+      code: 'UNYAMO_ALREADY_DECLARED',
+      message: 'Unyamo has already been declared this round',
     }
   }
   return { valid: true }

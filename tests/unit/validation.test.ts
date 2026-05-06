@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import {
   validateTurn, validatePhase, validateCardExists,
-  validateDiscardMultiple, validateUnyamo, validateNoDuplicateAction, validateDrawSource,
-  validateDiscardPickup
+  validateDiscardMultiple, validateUnyamo, validateDrawSource,
+  validateDiscardPickup, validateUnyamoNotYetDeclared,
 } from '@/game-logic/validation'
-import type { GameState, PlayerState } from '@/types/game'
+import type { GameState } from '@/types/game'
 import type { Card } from '@/types/card'
 
 const makeCard = (rank: number, id = `card-${rank}-${Math.random()}`): Card => ({
@@ -96,13 +96,6 @@ describe('validateDrawSource', () => {
   })
 })
 
-// validateDiscardPickup テスト用ヘルパー
-// turnOrder: ['player1', 'player2'], currentTurnIndex: 0 → currentPlayer=player1, prev=player2
-const makePlayerState = (id: string, isConnected = true) => ({
-  id, name: id, hand: [] as Card[], isConnected, lastActiveAt: Date.now(),
-  hasDrawnThisTurn: false, hasActedThisTurn: false, hasUsedSpecialAction: false,
-})
-
 describe('validateDiscardPickup', () => {
   it('invalid when discard pile is empty', () => {
     const r = validateDiscardPickup(makeState({ discardPile: [] }), 'player1')
@@ -110,63 +103,30 @@ describe('validateDiscardPickup', () => {
     if (!r.valid) expect(r.code).toBe('DISCARD_EMPTY')
   })
 
-  it('valid when top was discarded by the previous player (player2 → player1 acts)', () => {
-    // turnOrder=['player1','player2'], currentTurnIndex=0 → prev=player2
-    const prevDiscard: Card = { id: 'prev', suit: 'hearts', rank: 7, discardedBy: 'player2' }
-    const state = makeState({
-      discardPile: [prevDiscard],
-      players: [makePlayerState('player1'), makePlayerState('player2')],
-    })
-    const r = validateDiscardPickup(state, 'player1')
+  it('valid when discard pile has at least one card (regardless of who discarded it)', () => {
+    // 仕様 2.3節: 「捨て札の一番上から1枚引く」のみ。誰が捨てたかは関係ない。
+    const topCard: Card = { id: 'top', suit: 'hearts', rank: 7 }
+    const r = validateDiscardPickup(makeState({ discardPile: [topCard] }), 'player1')
     expect(r.valid).toBe(true)
   })
 
-  it('invalid when top was discarded by a player 2 turns ago (3-player game)', () => {
-    // turnOrder=['p1','p2','p3'], currentTurnIndex=2 → current=p3, prev=p2
-    // discardedBy='p1' (2手前) → invalid
-    const twoTurnsAgoDiscard: Card = { id: 'old', suit: 'spades', rank: 5, discardedBy: 'p1' }
-    const state = makeState({
-      turnOrder: ['p1', 'p2', 'p3'],
-      currentTurnIndex: 2,
-      discardPile: [twoTurnsAgoDiscard],
-      players: [makePlayerState('p1'), makePlayerState('p2'), makePlayerState('p3')],
-    })
-    const r = validateDiscardPickup(state, 'p3')
-    expect(r.valid).toBe(false)
-    if (!r.valid) expect(r.code).toBe('NOT_PREVIOUS_PLAYER_DISCARD')
-  })
-
-  it('invalid when top has no discardedBy', () => {
-    const noOwnerDiscard: Card = { id: 'noowner', suit: 'hearts', rank: 7 }
-    const r = validateDiscardPickup(makeState({ discardPile: [noOwnerDiscard] }), 'player1')
-    expect(r.valid).toBe(false)
-    if (!r.valid) expect(r.code).toBe('NOT_PREVIOUS_PLAYER_DISCARD')
-  })
-
-  it('invalid when top was discarded by current player themselves', () => {
-    // currentTurnIndex=0 → current=player1, prev=player2; discardedBy=player1 → invalid
-    const ownDiscard: Card = { id: 'own', suit: 'hearts', rank: 7, discardedBy: 'player1' }
-    const state = makeState({
-      discardPile: [ownDiscard],
-      players: [makePlayerState('player1'), makePlayerState('player2')],
-    })
-    const r = validateDiscardPickup(state, 'player1')
-    expect(r.valid).toBe(false)
-    if (!r.valid) expect(r.code).toBe('NOT_PREVIOUS_PLAYER_DISCARD')
-  })
-
-  it('skips disconnected previous player to find the next connected one', () => {
-    // turnOrder=['p1','p2','p3'], currentTurnIndex=0 → current=p1
-    // p3 is disconnected → prev should skip p3 and resolve to p2
-    // discardedBy='p2' → valid
-    const prevDiscard: Card = { id: 'skip', suit: 'clubs', rank: 4, discardedBy: 'p2' }
-    const state = makeState({
-      turnOrder: ['p1', 'p2', 'p3'],
-      currentTurnIndex: 0,
-      discardPile: [prevDiscard],
-      players: [makePlayerState('p1'), makePlayerState('p2'), makePlayerState('p3', false)],
-    })
-    const r = validateDiscardPickup(state, 'p1')
+  it('valid even when current player themselves discarded the top card', () => {
+    // 「自分が捨てたカードを自分で拾えない」という制限は仕様外。
+    const topCard: Card = { id: 'own', suit: 'hearts', rank: 7 }
+    const r = validateDiscardPickup(makeState({ discardPile: [topCard] }), 'player1')
     expect(r.valid).toBe(true)
+  })
+})
+
+describe('validateUnyamoNotYetDeclared', () => {
+  it('valid when no one has declared yet', () => {
+    const r = validateUnyamoNotYetDeclared(makeState({ unyamoDeclarerId: null }))
+    expect(r.valid).toBe(true)
+  })
+
+  it('invalid when another player has already declared', () => {
+    const r = validateUnyamoNotYetDeclared(makeState({ unyamoDeclarerId: 'player1' }))
+    expect(r.valid).toBe(false)
+    if (!r.valid) expect(r.code).toBe('UNYAMO_ALREADY_DECLARED')
   })
 })
