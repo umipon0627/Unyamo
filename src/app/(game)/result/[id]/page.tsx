@@ -34,14 +34,14 @@ export default async function ResultPage({ params }: { params: Promise<{ id: str
           </CardContent>
         </Card>
         <div className="flex gap-3 justify-center">
-          <Link href="/lobby">
+          <Link href={`/room/${id}`}>
             <Button className="bg-emerald-600 hover:bg-emerald-700">
-              ロビーへ戻る
+              もう一度遊ぶ
             </Button>
           </Link>
-          <Link href={`/room/${id}`}>
+          <Link href="/play">
             <Button variant="outline" className="border-slate-600">
-              同じルームで再戦
+              終了する
             </Button>
           </Link>
         </div>

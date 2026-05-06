@@ -3,12 +3,19 @@ import {
   validateTurn, validatePhase, validateCardExists,
   validateDiscardMultiple, validateUnyamo, validateDrawSource,
   validateDiscardPickup, validateUnyamoNotYetDeclared,
+  validateDrawPhase, validateDiscardPhase, validateNoDuplicateAction,
 } from '@/game-logic/validation'
-import type { GameState } from '@/types/game'
+import type { GameState, PlayerState } from '@/types/game'
 import type { Card } from '@/types/card'
 
 const makeCard = (rank: number, id = `card-${rank}-${Math.random()}`): Card => ({
   id, suit: 'spades', rank,
+})
+
+const makePlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
+  id: 'p1', name: 'p1', hand: [], isConnected: true, lastActiveAt: Date.now(),
+  hasDiscardedThisTurn: false, hasDrawnThisTurn: false, hasUsedSpecialAction: false,
+  ...overrides,
 })
 
 const makeState = (overrides: Partial<GameState> = {}): GameState => ({
@@ -23,6 +30,7 @@ const makeState = (overrides: Partial<GameState> = {}): GameState => ({
   hostId: 'player1',
   roomConfig: { maxPlayers: 4, roomName: 'Test', isPrivate: false },
   startedAt: Date.now(),
+  lastDiscardedCardIds: [],
   ...overrides,
 })
 
@@ -103,18 +111,25 @@ describe('validateDiscardPickup', () => {
     if (!r.valid) expect(r.code).toBe('DISCARD_EMPTY')
   })
 
-  it('valid when discard pile has at least one card (regardless of who discarded it)', () => {
-    // 仕様 2.3節: 「捨て札の一番上から1枚引く」のみ。誰が捨てたかは関係ない。
+  it('valid when top card was discarded by another player (lastDiscardedCardIds is empty)', () => {
+    // 仕様 2.3節: 捨て札の一番上から1枚引く（自分が捨てたものでなければ拾える）
     const topCard: Card = { id: 'top', suit: 'hearts', rank: 7 }
-    const r = validateDiscardPickup(makeState({ discardPile: [topCard] }), 'player1')
+    const r = validateDiscardPickup(
+      makeState({ discardPile: [topCard], lastDiscardedCardIds: [] }),
+      'player1'
+    )
     expect(r.valid).toBe(true)
   })
 
-  it('valid even when current player themselves discarded the top card', () => {
-    // 「自分が捨てたカードを自分で拾えない」という制限は仕様外。
-    const topCard: Card = { id: 'own', suit: 'hearts', rank: 7 }
-    const r = validateDiscardPickup(makeState({ discardPile: [topCard] }), 'player1')
-    expect(r.valid).toBe(true)
+  it('invalid when top card was just discarded by current player (lastDiscardedCardIds includes top)', () => {
+    // ACTION_PHASE→DRAW_PHASEの順序のため、自分が今捨てたカードは拾えない
+    const topCard: Card = { id: 'own-card', suit: 'hearts', rank: 7 }
+    const r = validateDiscardPickup(
+      makeState({ discardPile: [topCard], lastDiscardedCardIds: ['own-card'] }),
+      'player1'
+    )
+    expect(r.valid).toBe(false)
+    if (!r.valid) expect(r.code).toBe('CANNOT_PICKUP_OWN_DISCARD')
   })
 })
 
@@ -128,5 +143,48 @@ describe('validateUnyamoNotYetDeclared', () => {
     const r = validateUnyamoNotYetDeclared(makeState({ unyamoDeclarerId: 'player1' }))
     expect(r.valid).toBe(false)
     if (!r.valid) expect(r.code).toBe('UNYAMO_ALREADY_DECLARED')
+  })
+})
+
+describe('validateDiscardPhase', () => {
+  it('valid when player has not discarded yet', () => {
+    expect(validateDiscardPhase(makePlayer({ hasDiscardedThisTurn: false })).valid).toBe(true)
+  })
+  it('invalid when player has already discarded', () => {
+    const r = validateDiscardPhase(makePlayer({ hasDiscardedThisTurn: true }))
+    expect(r.valid).toBe(false)
+    if (!r.valid) expect(r.code).toBe('ALREADY_DISCARDED')
+  })
+})
+
+describe('validateDrawPhase', () => {
+  it('invalid when player has not discarded yet (must discard first)', () => {
+    const r = validateDrawPhase(makePlayer({ hasDiscardedThisTurn: false, hasDrawnThisTurn: false }))
+    expect(r.valid).toBe(false)
+    if (!r.valid) expect(r.code).toBe('MUST_DISCARD_FIRST')
+  })
+  it('valid when player has discarded but not drawn', () => {
+    expect(validateDrawPhase(makePlayer({ hasDiscardedThisTurn: true, hasDrawnThisTurn: false })).valid).toBe(true)
+  })
+  it('invalid when player has already drawn', () => {
+    const r = validateDrawPhase(makePlayer({ hasDiscardedThisTurn: true, hasDrawnThisTurn: true }))
+    expect(r.valid).toBe(false)
+    if (!r.valid) expect(r.code).toBe('ALREADY_DREW')
+  })
+})
+
+describe('validateNoDuplicateAction', () => {
+  it('valid when player has not discarded', () => {
+    expect(validateNoDuplicateAction(makePlayer({ hasDiscardedThisTurn: false }), 'normal').valid).toBe(true)
+  })
+  it('invalid when player already discarded', () => {
+    const r = validateNoDuplicateAction(makePlayer({ hasDiscardedThisTurn: true }), 'normal')
+    expect(r.valid).toBe(false)
+    if (!r.valid) expect(r.code).toBe('ALREADY_ACTED')
+  })
+  it('invalid for special when special already used', () => {
+    const r = validateNoDuplicateAction(makePlayer({ hasUsedSpecialAction: true }), 'special')
+    expect(r.valid).toBe(false)
+    if (!r.valid) expect(r.code).toBe('ALREADY_USED_SPECIAL')
   })
 })

@@ -35,6 +35,9 @@ export function GameBoard({ roomId, myPlayerId, token }: GameBoardProps) {
   const isCpuRoom = roomId.startsWith('cpu-')
   const backPath = isCpuRoom ? '/play' : '/lobby'
 
+  // CPU対戦の設定: 初回ゲーム開始時に消費し、再戦時に復元するため別キーで残す
+  const cpuLastConfigRef = useRef<{ cpuCount: number; difficulty: 'EASY' | 'HARD' } | null>(null)
+
   // CPU対戦: WAITING状態かつホストの場合、sessionStorageの設定を読んでSTART_CPU_GAMEを送信
   useEffect(() => {
     if (!isCpuRoom) return
@@ -49,12 +52,32 @@ export function GameBoard({ roomId, myPlayerId, token }: GameBoardProps) {
     try {
       const config = JSON.parse(configJson) as { cpuCount: number; difficulty: 'EASY' | 'HARD' }
       cpuGameStartedRef.current = true
+      cpuLastConfigRef.current = config
       sessionStorage.removeItem(`cpu-config-${roomId}`)
       send({ type: 'START_CPU_GAME', payload: { cpuCount: config.cpuCount, difficulty: config.difficulty } })
     } catch {
       // 不正なJSONは無視
     }
   }, [isCpuRoom, status, phase, hostId, myPlayerId, roomId, send])
+
+  // 再戦フラグ: RESULT → WAITING に戻った後の自動再開（CPUルームのみ）
+  const restartingRef = useRef(false)
+
+  // CPUルーム: WAITING かつホスト かつ 再戦リクエスト後 → 同じ設定でゲームを再開
+  useEffect(() => {
+    if (!isCpuRoom) return
+    if (!restartingRef.current) return
+    if (status !== 'open') return
+    if (phase !== 'WAITING') return
+    if (hostId !== myPlayerId) return
+    const config = cpuLastConfigRef.current
+    if (!config) {
+      restartingRef.current = false
+      return
+    }
+    restartingRef.current = false
+    send({ type: 'START_CPU_GAME', payload: { cpuCount: config.cpuCount, difficulty: config.difficulty } })
+  }, [isCpuRoom, status, phase, hostId, myPlayerId, send])
 
   const others = gameState?.otherPlayers ?? []
 
@@ -87,14 +110,29 @@ export function GameBoard({ roomId, myPlayerId, token }: GameBoardProps) {
     send({ type: 'DECLARE_UNYAMO' })
   }, [send, triggerUnyamoFlash])
 
-  const hasDrawn = availableActions.includes('DISCARD') || availableActions.includes('DISCARD_MULTIPLE')
-  const canDrawDeck = availableActions.includes('DRAW') && (gameState?.deckCount ?? 0) > 0
+  const handlePlayAgain = useCallback(() => {
+    if (isCpuRoom) {
+      // CPUルーム: ホストが RESTART_GAME を送信 → サーバーは WAITING にリセット
+      // → useEffect で同じ設定で START_CPU_GAME を再送信
+      restartingRef.current = true
+    }
+    send({ type: 'RESTART_GAME' })
+  }, [isCpuRoom, send])
+
+  const handleExit = useCallback(() => {
+    router.push(backPath)
+  }, [router, backPath])
+
+  // 仕様 2.6節: ターンは ACTION_PHASE（DISCARD or ウニャモ宣言） → DRAW_PHASE → TURN_END
+  const canDiscard = availableActions.includes('DISCARD') || availableActions.includes('DISCARD_MULTIPLE')
+  const isDrawPhase = availableActions.includes('DRAW')
+  const canDrawDeck = isDrawPhase && (gameState?.deckCount ?? 0) > 0
   const canDrawDiscard =
-    availableActions.includes('DRAW') &&
+    isDrawPhase &&
     !!discardTop &&
     (gameState?.canPickupFromDiscard ?? false)
   const canDeclare = availableActions.includes('DECLARE_UNYAMO')
-  const hasUsedSpecial = !availableActions.includes('DISCARD_MULTIPLE') && hasDrawn
+  const hasUsedSpecial = !availableActions.includes('DISCARD_MULTIPLE') && canDiscard
 
   if (status === 'connecting') {
     return <div className="flex items-center justify-center h-screen text-slate-400">接続中...</div>
@@ -195,14 +233,15 @@ export function GameBoard({ roomId, myPlayerId, token }: GameBoardProps) {
           <Hand
             cards={myHand}
             selectedIndices={selectedIndices}
-            onSelect={isMyTurn && hasDrawn ? handleCardSelect : undefined}
+            onSelect={isMyTurn && canDiscard ? handleCardSelect : undefined}
             size="md"
             isMobile
           />
           <div className="flex items-center gap-3 flex-wrap justify-center">
             <ActionPanel
               isMyTurn={isMyTurn}
-              hasDrawn={hasDrawn}
+              canDiscard={canDiscard}
+              isDrawPhase={isDrawPhase}
               canDrawDeck={canDrawDeck}
               canDrawDiscard={canDrawDiscard}
               selectedCount={selectedIndices.length}
@@ -227,7 +266,9 @@ export function GameBoard({ roomId, myPlayerId, token }: GameBoardProps) {
         open={phase === 'RESULT' && !!results}
         results={results?.results ?? []}
         myPlayerId={myPlayerId}
-        onBackToLobby={() => router.push(backPath)}
+        isHost={hostId === myPlayerId}
+        onPlayAgain={handlePlayAgain}
+        onExit={handleExit}
       />
     </div>
   )

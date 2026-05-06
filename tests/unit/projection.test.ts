@@ -6,7 +6,7 @@ import type { Card } from '@/types/card'
 const makeCard = (rank: number, id = `card-${rank}`): Card => ({ id, suit: 'spades', rank })
 const makePlayer = (id: string, hand: Card[], isConnected = true): PlayerState => ({
   id, name: id, hand, isConnected, lastActiveAt: Date.now(),
-  hasDrawnThisTurn: false, hasActedThisTurn: false, hasUsedSpecialAction: false,
+  hasDiscardedThisTurn: false, hasDrawnThisTurn: false, hasUsedSpecialAction: false,
 })
 
 const makeState = (players: PlayerState[]): GameState => ({
@@ -21,6 +21,7 @@ const makeState = (players: PlayerState[]): GameState => ({
   hostId: players[0]!.id,
   roomConfig: { maxPlayers: 4, roomName: 'Test', isPrivate: false },
   startedAt: Date.now(),
+  lastDiscardedCardIds: [],
 })
 
 describe('projectStateForPlayer', () => {
@@ -46,12 +47,14 @@ describe('projectStateForPlayer', () => {
     expect(projected.discardPileTop?.rank).toBe(3)
   })
 
-  it('canPickupFromDiscard is true when discard pile has any card on my turn (regardless of who discarded)', () => {
-    // 仕様 2.3節: 捨て札の一番上から1枚引く。誰が捨てたかは関係ない。
-    const topCard: Card = { id: 'top', suit: 'hearts', rank: 7 }
+  it('canPickupFromDiscard is true when I have discarded but not drawn (DRAW_PHASE) and top is not my own', () => {
+    // 仕様 2.6節: ACTION_PHASE→DRAW_PHASE。DISCARD完了後、自分以外の捨て札なら拾える。
+    const topCard: Card = { id: 'others-top', suit: 'hearts', rank: 7 }
+    const me = { ...makePlayer('me', []), hasDiscardedThisTurn: true, hasDrawnThisTurn: false }
     const state: GameState = {
-      ...makeState([makePlayer('me', []), makePlayer('other', [])]),
+      ...makeState([me, makePlayer('other', [])]),
       discardPile: [topCard],
+      lastDiscardedCardIds: [], // 今ターンで自分はまだ何も捨てていない or 別カードを捨てた前提
     }
     const projected = projectStateForPlayer(state, 'me')
     expect(projected.canPickupFromDiscard).toBe(true)
@@ -59,7 +62,7 @@ describe('projectStateForPlayer', () => {
 
   it('canPickupFromDiscard is false when discard pile is empty', () => {
     const state: GameState = {
-      ...makeState([makePlayer('me', [])]),
+      ...makeState([{ ...makePlayer('me', []), hasDiscardedThisTurn: true }]),
       discardPile: [],
     }
     const projected = projectStateForPlayer(state, 'me')
@@ -77,12 +80,36 @@ describe('projectStateForPlayer', () => {
     expect(projected.canPickupFromDiscard).toBe(false)
   })
 
-  it('canPickupFromDiscard is false when already drew this turn', () => {
+  it('canPickupFromDiscard is false when I have not discarded yet (still in ACTION_PHASE)', () => {
     const topCard: Card = { id: 'top', suit: 'hearts', rank: 7 }
-    const me = { ...makePlayer('me', []), hasDrawnThisTurn: true }
+    const me = { ...makePlayer('me', []), hasDiscardedThisTurn: false }
     const state: GameState = {
       ...makeState([me, makePlayer('other', [])]),
       discardPile: [topCard],
+    }
+    const projected = projectStateForPlayer(state, 'me')
+    expect(projected.canPickupFromDiscard).toBe(false)
+  })
+
+  it('canPickupFromDiscard is false when already drew this turn', () => {
+    const topCard: Card = { id: 'top', suit: 'hearts', rank: 7 }
+    const me = { ...makePlayer('me', []), hasDiscardedThisTurn: true, hasDrawnThisTurn: true }
+    const state: GameState = {
+      ...makeState([me, makePlayer('other', [])]),
+      discardPile: [topCard],
+    }
+    const projected = projectStateForPlayer(state, 'me')
+    expect(projected.canPickupFromDiscard).toBe(false)
+  })
+
+  it('canPickupFromDiscard is false when top of discard is the card I just discarded', () => {
+    // 仕様: ACTION_PHASE で自分が捨てたばかりのカードは DRAW_PHASE で拾えない
+    const topCard: Card = { id: 'my-card', suit: 'hearts', rank: 7 }
+    const me = { ...makePlayer('me', []), hasDiscardedThisTurn: true, hasDrawnThisTurn: false }
+    const state: GameState = {
+      ...makeState([me, makePlayer('other', [])]),
+      discardPile: [topCard],
+      lastDiscardedCardIds: ['my-card'],
     }
     const projected = projectStateForPlayer(state, 'me')
     expect(projected.canPickupFromDiscard).toBe(false)
@@ -98,5 +125,42 @@ describe('projectStateForPlayer', () => {
     const projected = projectStateForPlayer(state, 'me')
     expect(projected.availableActions).not.toContain('DECLARE_UNYAMO')
     expect(projected.canDeclareUnyamo).toBe(false)
+  })
+
+  it('availableActions in ACTION_PHASE: DISCARD/DISCARD_MULTIPLE (no DRAW)', () => {
+    // 仕様 2.6節: ターン開始は ACTION_PHASE。
+    const myHand = [makeCard(7), makeCard(7)]
+    const state: GameState = {
+      ...makeState([makePlayer('me', myHand), makePlayer('other', [])]),
+    }
+    const projected = projectStateForPlayer(state, 'me')
+    expect(projected.availableActions).toContain('DISCARD')
+    expect(projected.availableActions).toContain('DISCARD_MULTIPLE')
+    expect(projected.availableActions).not.toContain('DRAW')
+  })
+
+  it('availableActions in DRAW_PHASE: DRAW only (no DISCARD)', () => {
+    // 仕様 2.6節: DISCARD完了後は DRAW_PHASE。
+    const myHand = [makeCard(7)]
+    const me = { ...makePlayer('me', myHand), hasDiscardedThisTurn: true, hasDrawnThisTurn: false }
+    const state: GameState = {
+      ...makeState([me, makePlayer('other', [])]),
+    }
+    const projected = projectStateForPlayer(state, 'me')
+    expect(projected.availableActions).toContain('DRAW')
+    expect(projected.availableActions).not.toContain('DISCARD')
+    expect(projected.availableActions).not.toContain('DISCARD_MULTIPLE')
+    expect(projected.availableActions).not.toContain('DECLARE_UNYAMO')
+  })
+
+  it('DECLARE_UNYAMO available in ACTION_PHASE only (not in DRAW_PHASE)', () => {
+    // ウニャモ宣言はターン開始時のみ可能（DISCARD前）
+    const myHand = [makeCard(1)] // 1点
+    const meDrawPhase = { ...makePlayer('me', myHand), hasDiscardedThisTurn: true }
+    const state: GameState = {
+      ...makeState([meDrawPhase, makePlayer('other', [])]),
+    }
+    const projected = projectStateForPlayer(state, 'me')
+    expect(projected.availableActions).not.toContain('DECLARE_UNYAMO')
   })
 })

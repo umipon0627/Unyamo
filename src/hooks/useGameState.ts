@@ -20,13 +20,17 @@ type Action =
 
 function reducer(state: LocalGameState, action: Action): LocalGameState {
   switch (action.type) {
-    case 'GAME_STATE':
+    case 'GAME_STATE': {
+      // WAITING に戻った（再戦リセット）場合、結果と宣言者をクリア
+      const isReset = action.payload.phase === 'WAITING' && state.phase !== 'WAITING'
       return {
         ...state,
         gameState: action.payload,
         currentPlayerId: action.payload.currentTurnPlayerId,
         phase: action.payload.phase,
+        ...(isReset ? { results: null, unyamoDeclarerId: null } : {}),
       }
+    }
     case 'UNYAMO_DECLARED':
       return { ...state, unyamoDeclarerId: action.payload.playerId }
     case 'GAME_RESULT':

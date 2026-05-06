@@ -22,10 +22,13 @@ export const startCpuGameSchema = z.object({
     difficulty: z.enum(['EASY', 'HARD']),
   }),
 })
+// 結果画面 → 「もう一度遊ぶ」: ホストがルームを WAITING にリセットする
+export const restartGameSchema = z.object({ type: z.literal('RESTART_GAME') })
 
 export const clientMessageSchema = z.discriminatedUnion('type', [
   joinSchema, startGameSchema, discardSchema, discardMultipleSchema,
   drawSchema, declareUnyamoSchema, reconnectSchema, startCpuGameSchema,
+  restartGameSchema,
 ])
 
 export type ClientMessage = z.infer<typeof clientMessageSchema>

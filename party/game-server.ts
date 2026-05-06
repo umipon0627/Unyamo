@@ -69,6 +69,7 @@ export default class GameServer implements Party.Server {
       case 'DRAW': return this.handleDraw(sender, msg.payload.source)
       case 'DECLARE_UNYAMO': return this.handleDeclareUnyamo(sender)
       case 'RECONNECT': return this.handleReconnect(sender, msg.payload.token)
+      case 'RESTART_GAME': return this.handleRestartGame(sender)
     }
   }
 
@@ -128,6 +129,7 @@ export default class GameServer implements Party.Server {
         hostId: identity.userId,
         roomConfig: { maxPlayers: 8, roomName: escapeHtml(this.room.id), isPrivate: false },
         startedAt: null,
+        lastDiscardedCardIds: [],
       }
     }
 
@@ -165,8 +167,8 @@ export default class GameServer implements Party.Server {
       hand: [],
       isConnected: true,
       lastActiveAt: Date.now(),
+      hasDiscardedThisTurn: false,
       hasDrawnThisTurn: false,
-      hasActedThisTurn: false,
       hasUsedSpecialAction: false,
     }
     this.gameState = { ...this.gameState, players: [...this.gameState.players, newPlayer] }
@@ -195,10 +197,19 @@ export default class GameServer implements Party.Server {
       phase: 'PLAYING',
       deck: remainingDeck,
       discardPile: [],
-      players: this.gameState.players.map((p, i) => ({ ...p, hand: hands[i] ?? [] })),
+      players: this.gameState.players.map((p, i) => ({
+        ...p,
+        hand: hands[i] ?? [],
+        hasDiscardedThisTurn: false,
+        hasDrawnThisTurn: false,
+        hasUsedSpecialAction: false,
+      })),
       turnOrder,
       currentTurnIndex: 0,
       startedAt: Date.now(),
+      lastDiscardedCardIds: [],
+      unyamoDeclarerId: null,
+      remainingPlayersAfterDeclare: [],
     }
     this.broadcastGameState()
     this.scheduleTurnTimeout()
@@ -235,8 +246,8 @@ export default class GameServer implements Party.Server {
       hand: [],
       isConnected: true,
       lastActiveAt: Date.now(),
+      hasDiscardedThisTurn: false,
       hasDrawnThisTurn: false,
-      hasActedThisTurn: false,
       hasUsedSpecialAction: false,
     }))
 
@@ -253,10 +264,19 @@ export default class GameServer implements Party.Server {
       phase: 'PLAYING',
       deck: remainingDeck,
       discardPile: [],
-      players: allPlayers.map((p, i) => ({ ...p, hand: hands[i] ?? [] })),
+      players: allPlayers.map((p, i) => ({
+        ...p,
+        hand: hands[i] ?? [],
+        hasDiscardedThisTurn: false,
+        hasDrawnThisTurn: false,
+        hasUsedSpecialAction: false,
+      })),
       turnOrder,
       currentTurnIndex: 0,
       startedAt: Date.now(),
+      lastDiscardedCardIds: [],
+      unyamoDeclarerId: null,
+      remainingPlayersAfterDeclare: [],
     }
     this.broadcastGameState()
     // ターンタイムアウトはCPUターンには不要
@@ -289,14 +309,16 @@ export default class GameServer implements Party.Server {
 
   /**
    * CPUのターンを自動実行する。
+   * 仕様 2.6節: ターン順序は ACTION_PHASE（DISCARD or ウニャモ宣言）→ DRAW_PHASE。
    */
   private executeCpuTurn(cpuId: string) {
     if (!this.gameState) return
     const player = this.gameState.players.find(p => p.id === cpuId)
     if (!player) return
 
-    // ウニャモ宣言チェック（DRAWフェーズでのみ可能。すでに誰かが宣言済みなら不可）
-    if (!player.hasDrawnThisTurn) {
+    // ACTION_PHASE: ウニャモ宣言 or DISCARD
+    if (!player.hasDiscardedThisTurn) {
+      // ウニャモ宣言チェック（ターン開始時のみ可能。すでに誰かが宣言済みなら不可）
       if (this.gameState.unyamoDeclarerId === null) {
         const shouldDeclare = decideUnyamoDeclaration(player.hand, this.cpuDifficulty)
         if (shouldDeclare) {
@@ -306,35 +328,42 @@ export default class GameServer implements Party.Server {
         }
       }
 
-      // DRAW: 仕様 2.3節「捨て札の一番上から1枚引く」（誰が捨てたかは関係ない）
+      // DISCARD: 1枚または特殊操作で2-3枚
+      const cardIds = decideDiscard(player.hand, this.cpuDifficulty)
+      if (cardIds.length === 0) return
+      this.performDiscard(cpuId, cardIds)
+      // performDiscard は advance せずに DRAW を待つ
+    }
+
+    // DRAW_PHASE（500ms後）
+    this.cpuActionTimer = setTimeout(() => {
+      this.cpuActionTimer = null
+      if (!this.gameState) return
+      const updatedPlayer = this.gameState.players.find(p => p.id === cpuId)
+      if (!updatedPlayer || !updatedPlayer.hasDiscardedThisTurn) return
+      if (updatedPlayer.hasDrawnThisTurn) return
+
+      // 仕様 2.3節: 捨て札の一番上から1枚引く（ただし自分が今捨てたものは拾えない）
       const discardTop = this.gameState.discardPile[this.gameState.discardPile.length - 1] ?? null
-      const canPickupFromDiscard = !!discardTop
+      const isOwnLastDiscard =
+        !!discardTop && this.gameState.lastDiscardedCardIds.includes(discardTop.id)
+      const canPickupFromDiscard = !!discardTop && !isOwnLastDiscard
 
       const source = decideDrawSource(
-        player.hand,
+        updatedPlayer.hand,
         discardTop,
         canPickupFromDiscard,
         this.cpuDifficulty
       )
       this.performDraw(cpuId, source)
-    }
-
-    // DISCARD（500ms後）
-    this.cpuActionTimer = setTimeout(() => {
-      this.cpuActionTimer = null
-      if (!this.gameState) return
-      const updatedPlayer = this.gameState.players.find(p => p.id === cpuId)
-      if (!updatedPlayer || !updatedPlayer.hasDrawnThisTurn) return
-
-      const cardIds = decideDiscard(updatedPlayer.hand, this.cpuDifficulty)
-      if (cardIds.length === 0) return
-      this.performDiscard(cpuId, cardIds)
-      this.scheduleCpuActionIfNeeded()
+      // DRAW完了 → ターン進行（advanceAfterDraw 内で scheduleCpuActionIfNeeded を実行）
+      this.advanceAfterDraw(cpuId)
     }, 500)
   }
 
   /**
    * DRAWの内部処理（CPU・人間共通）
+   * 仕様 2.6節: ターンの後半フェーズ。DISCARDの後に呼ばれる。
    */
   private performDraw(playerId: string, source: 'deck' | 'discard') {
     if (!this.gameState) return
@@ -379,8 +408,10 @@ export default class GameServer implements Party.Server {
 
   /**
    * DISCARDの内部処理（CPU・人間共通）
+   * 仕様 2.6節: ACTION_PHASE。ターンの最初のフェーズ。
    * cardIds.length === 1: 通常捨て
    * cardIds.length >= 2: 特殊操作（DISCARD_MULTIPLE）
+   * 完了後はDRAW_PHASEに移行する（ターンは進めない）。
    */
   private performDiscard(playerId: string, cardIds: string[]) {
     if (!this.gameState) return
@@ -404,9 +435,10 @@ export default class GameServer implements Party.Server {
       this.gameState = {
         ...this.gameState,
         discardPile: [...this.gameState.discardPile, card],
+        lastDiscardedCardIds: [card.id],
         players: this.gameState.players.map(p =>
           p.id === playerId
-            ? { ...p, hand: p.hand.filter(c => c.id !== cardId), hasActedThisTurn: true, lastActiveAt: Date.now() }
+            ? { ...p, hand: p.hand.filter(c => c.id !== cardId), hasDiscardedThisTurn: true, lastActiveAt: Date.now() }
             : p
         ),
       }
@@ -428,15 +460,16 @@ export default class GameServer implements Party.Server {
       this.gameState = {
         ...this.gameState,
         discardPile: [...this.gameState.discardPile, ...selectedCards],
+        lastDiscardedCardIds: selectedCards.map(c => c.id),
         players: this.gameState.players.map(p =>
           p.id === playerId
-            ? { ...p, hand: p.hand.filter(c => !cardIds.includes(c.id)), hasActedThisTurn: true, hasUsedSpecialAction: true, lastActiveAt: Date.now() }
+            ? { ...p, hand: p.hand.filter(c => !cardIds.includes(c.id)), hasDiscardedThisTurn: true, hasUsedSpecialAction: true, lastActiveAt: Date.now() }
             : p
         ),
       }
     }
 
-    this.advanceAfterDiscard(playerId)
+    this.broadcastGameState()
   }
 
   /**
@@ -505,15 +538,17 @@ export default class GameServer implements Party.Server {
     this.gameState = {
       ...this.gameState,
       discardPile: [...this.gameState.discardPile, card],
+      lastDiscardedCardIds: [card.id],
       players: this.gameState.players.map(p =>
         p.id === info.userId
-          ? { ...p, hand: p.hand.filter(c => c.id !== cardId), hasActedThisTurn: true, lastActiveAt: Date.now() }
+          ? { ...p, hand: p.hand.filter(c => c.id !== cardId), hasDiscardedThisTurn: true, lastActiveAt: Date.now() }
           : p
       ),
     }
     send(conn, { type: 'ACTION_RESULT', payload: { success: true, action: 'DISCARD', playerId: info.userId } })
 
-    this.advanceAfterDiscard(info.userId)
+    // 仕様 2.6節: DISCARDの後はDRAW_PHASE。ターンはまだ進めない。
+    this.broadcastGameState()
   }
 
   private handleDiscardMultiple(conn: Party.Connection, cardIds: string[]) {
@@ -542,15 +577,17 @@ export default class GameServer implements Party.Server {
     this.gameState = {
       ...this.gameState,
       discardPile: [...this.gameState.discardPile, ...selectedCards],
+      lastDiscardedCardIds: selectedCards.map(c => c.id),
       players: this.gameState.players.map(p =>
         p.id === info.userId
-          ? { ...p, hand: p.hand.filter(c => !cardIds.includes(c.id)), hasActedThisTurn: true, hasUsedSpecialAction: true, lastActiveAt: Date.now() }
+          ? { ...p, hand: p.hand.filter(c => !cardIds.includes(c.id)), hasDiscardedThisTurn: true, hasUsedSpecialAction: true, lastActiveAt: Date.now() }
           : p
       ),
     }
     send(conn, { type: 'ACTION_RESULT', payload: { success: true, action: 'DISCARD_MULTIPLE', playerId: info.userId } })
 
-    this.advanceAfterDiscard(info.userId)
+    // 仕様 2.6節: DISCARDの後はDRAW_PHASE。ターンはまだ進めない。
+    this.broadcastGameState()
   }
 
   private handleDraw(conn: Party.Connection, source: 'deck' | 'discard') {
@@ -597,13 +634,16 @@ export default class GameServer implements Party.Server {
     }
 
     send(conn, { type: 'ACTION_RESULT', payload: { success: true, action: 'DRAW', playerId: info.userId } })
-    this.broadcastGameState()
+
+    // 仕様 2.6節: DRAW完了 → ターン終了して次のプレイヤーへ。
+    this.advanceAfterDraw(info.userId)
   }
 
   /**
-   * DISCARD / DISCARD_MULTIPLE 完了後にターンを進める共通処理。
+   * DRAW完了後にターンを進める共通処理。
+   * 仕様 2.6節: ACTION_PHASE → DRAW_PHASE → TURN_END
    */
-  private advanceAfterDiscard(actorId: string) {
+  private advanceAfterDraw(actorId: string) {
     if (!this.gameState) return
     this.cancelTurnTimeout()
 
@@ -677,6 +717,57 @@ export default class GameServer implements Party.Server {
     await this.handleJoin(conn, token)
   }
 
+  /**
+   * 結果画面の「もう一度遊ぶ」: ホストのみが実行可能。
+   * ルームを WAITING にリセットし、CPU プレイヤーは取り除く。
+   * その後、待機画面で人間プレイヤーがそれぞれ START_GAME / START_CPU_GAME を送れる状態にする。
+   */
+  private handleRestartGame(conn: Party.Connection) {
+    const info = this.connections.get(conn.id)
+    if (!info || !this.gameState) return
+    if (info.userId !== this.gameState.hostId) {
+      send(conn, { type: 'ERROR', payload: { code: 'NOT_HOST', message: 'Only host can restart' } })
+      return
+    }
+    if (this.gameState.phase !== 'RESULT' && this.gameState.phase !== 'JUDGING') {
+      send(conn, { type: 'ERROR', payload: { code: 'WRONG_PHASE', message: 'Restart only allowed after game end' } })
+      return
+    }
+
+    this.cancelTurnTimeout()
+    if (this.cpuActionTimer) {
+      clearTimeout(this.cpuActionTimer)
+      this.cpuActionTimer = null
+    }
+
+    // CPUプレイヤーを除去（人間のみ残す）
+    const humanPlayers = this.gameState.players
+      .filter(p => !this.cpuPlayerIds.has(p.id))
+      .map(p => ({
+        ...p,
+        hand: [],
+        hasDiscardedThisTurn: false,
+        hasDrawnThisTurn: false,
+        hasUsedSpecialAction: false,
+      }))
+    this.cpuPlayerIds = new Set()
+
+    this.gameState = {
+      ...this.gameState,
+      phase: 'WAITING',
+      players: humanPlayers,
+      deck: [],
+      discardPile: [],
+      currentTurnIndex: 0,
+      turnOrder: [],
+      unyamoDeclarerId: null,
+      remainingPlayersAfterDeclare: [],
+      startedAt: null,
+      lastDiscardedCardIds: [],
+    }
+    this.broadcastGameState()
+  }
+
   private finalizeGame() {
     if (!this.gameState) return
     this.cancelTurnTimeout()
@@ -745,7 +836,28 @@ export default class GameServer implements Party.Server {
       const player = this.gameState.players.find(p => p.id === currentPlayerId)
       if (!player) return
 
-      if (!player.hasDrawnThisTurn) {
+      // 仕様 6.4節: 自動操作 = 手札の最大点カードを1枚捨てる → 山札から1枚引く。
+      // 仕様 2.6節の順序に従い、まずDISCARDを実施してからDRAW。
+      if (!player.hasDiscardedThisTurn && player.hand.length > 0) {
+        const maxCard = player.hand.reduce((max, c) => {
+          const score = c.suit === 'joker' ? 0 : c.rank
+          const maxScore = max.suit === 'joker' ? 0 : max.rank
+          return score > maxScore ? c : max
+        }, player.hand[0]!)
+        this.gameState = {
+          ...this.gameState,
+          discardPile: [...this.gameState.discardPile, maxCard],
+          lastDiscardedCardIds: [maxCard.id],
+          players: this.gameState.players.map(p =>
+            p.id === currentPlayerId
+              ? { ...p, hand: p.hand.filter(c => c.id !== maxCard.id), hasDiscardedThisTurn: true }
+              : p
+          ),
+        }
+      }
+
+      const afterDiscard = this.gameState.players.find(p => p.id === currentPlayerId)
+      if (afterDiscard && !afterDiscard.hasDrawnThisTurn) {
         const { card, remainingDeck } = drawFromDeck(this.gameState.deck)
         if (card) {
           this.gameState = {
@@ -760,27 +872,7 @@ export default class GameServer implements Party.Server {
         }
       }
 
-      const updatedPlayer = this.gameState.players.find(p => p.id === currentPlayerId)
-      if (!updatedPlayer || updatedPlayer.hand.length === 0) {
-        this.advanceAfterDiscard(currentPlayerId)
-        return
-      }
-      const maxCard = updatedPlayer.hand.reduce((max, c) => {
-        const score = c.suit === 'joker' ? 0 : c.rank
-        const maxScore = max.suit === 'joker' ? 0 : max.rank
-        return score > maxScore ? c : max
-      }, updatedPlayer.hand[0]!)
-      this.gameState = {
-        ...this.gameState,
-        discardPile: [...this.gameState.discardPile, maxCard],
-        players: this.gameState.players.map(p =>
-          p.id === currentPlayerId
-            ? { ...p, hand: p.hand.filter(c => c.id !== maxCard.id), hasActedThisTurn: true }
-            : p
-        ),
-      }
-
-      this.advanceAfterDiscard(currentPlayerId)
+      this.advanceAfterDraw(currentPlayerId)
     }, TURN_TIMEOUT_MS)
   }
 

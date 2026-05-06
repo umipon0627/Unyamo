@@ -5,7 +5,7 @@ import type { Card } from '@/types/card'
 
 const makePlayer = (id: string, isConnected = true): PlayerState => ({
   id, name: id, hand: [], isConnected, lastActiveAt: Date.now(),
-  hasDrawnThisTurn: false, hasActedThisTurn: false, hasUsedSpecialAction: false,
+  hasDiscardedThisTurn: false, hasDrawnThisTurn: false, hasUsedSpecialAction: false,
 })
 
 const makeState = (overrides: Partial<GameState> = {}): GameState => ({
@@ -20,6 +20,7 @@ const makeState = (overrides: Partial<GameState> = {}): GameState => ({
   hostId: 'p1',
   roomConfig: { maxPlayers: 4, roomName: 'Test', isPrivate: false },
   startedAt: Date.now(),
+  lastDiscardedCardIds: [],
   ...overrides,
 })
 
@@ -39,11 +40,18 @@ describe('advanceTurn', () => {
     const next = advanceTurn(makeState({ currentTurnIndex: 2 }))
     expect(getCurrentPlayerId(next)).toBe('p1')
   })
-  it('resets hasActedThisTurn for all players', () => {
+  it('resets hasDiscardedThisTurn and hasDrawnThisTurn for all players', () => {
     const state = makeState()
-    state.players[0]!.hasActedThisTurn = true
+    state.players[0]!.hasDiscardedThisTurn = true
+    state.players[0]!.hasDrawnThisTurn = true
     const next = advanceTurn(state)
-    expect(next.players.every(p => !p.hasActedThisTurn)).toBe(true)
+    expect(next.players.every(p => !p.hasDiscardedThisTurn)).toBe(true)
+    expect(next.players.every(p => !p.hasDrawnThisTurn)).toBe(true)
+  })
+  it('clears lastDiscardedCardIds', () => {
+    const state = makeState({ lastDiscardedCardIds: ['c1', 'c2'] })
+    const next = advanceTurn(state)
+    expect(next.lastDiscardedCardIds).toEqual([])
   })
   it('skips disconnected players', () => {
     const state = makeState({

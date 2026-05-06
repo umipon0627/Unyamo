@@ -29,11 +29,16 @@ export function advanceTurn(state: GameState): GameState {
   }
   const updatedPlayers = state.players.map(p => ({
     ...p,
+    hasDiscardedThisTurn: false,
     hasDrawnThisTurn: false,
-    hasActedThisTurn: false,
     hasUsedSpecialAction: false,
   }))
-  return { ...state, currentTurnIndex: nextIndex, players: updatedPlayers }
+  return {
+    ...state,
+    currentTurnIndex: nextIndex,
+    players: updatedPlayers,
+    lastDiscardedCardIds: [],
+  }
 }
 
 export function isRoundComplete(state: GameState): boolean {

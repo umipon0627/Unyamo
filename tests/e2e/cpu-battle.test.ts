@@ -106,11 +106,11 @@ test.describe('CPU対戦ゲームフロー', () => {
     await expect(page).toHaveURL(/\/room\/cpu-/, { timeout: 15_000 })
 
     // ゲームが自動進行してウニャモ宣言 or 結果モーダルが表示されるのを待つ
-    // 結果画面が表示されるまで最大60秒待機
-    await expect(page.getByText('ゲーム結果')).toBeVisible({ timeout: 60_000 })
+    // 結果画面のタイトル「勝利！」または「ゲーム終了」が表示されるまで最大60秒待機
+    await expect(page.getByText(/勝利！|ゲーム終了/)).toBeVisible({ timeout: 60_000 })
   })
 
-  test('結果画面で「プレイ画面に戻る」ボタンが /play に遷移する', async ({ page }) => {
+  test('結果画面で「終了する」ボタンが /play に遷移する', async ({ page }) => {
     test.setTimeout(90_000)
 
     await page.goto('/login')
@@ -123,11 +123,10 @@ test.describe('CPU対戦ゲームフロー', () => {
     await page.getByRole('button', { name: 'ゲーム開始' }).click()
 
     await expect(page).toHaveURL(/\/room\/cpu-/, { timeout: 15_000 })
-    await expect(page.getByText('ゲーム結果')).toBeVisible({ timeout: 60_000 })
+    await expect(page.getByText(/勝利！|ゲーム終了/)).toBeVisible({ timeout: 60_000 })
 
-    // 結果モーダルの戻るボタン（ResultModalの実装に応じたテキストを検索）
-    const backBtn = page.getByRole('button', { name: /ロビー|プレイ画面|戻る/ }).first()
-    await backBtn.click()
+    // ResultModal の「終了する」ボタンで /play に戻る
+    await page.getByRole('button', { name: '終了する' }).click()
 
     await expect(page).toHaveURL(/\/play$/, { timeout: 10_000 })
   })

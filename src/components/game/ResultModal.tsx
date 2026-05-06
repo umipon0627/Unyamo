@@ -20,7 +20,9 @@ interface ResultModalProps {
   open: boolean
   results: ResultEntry[]
   myPlayerId: string
-  onBackToLobby: () => void
+  isHost: boolean
+  onPlayAgain: () => void
+  onExit: () => void
 }
 
 function Confetti() {
@@ -45,7 +47,7 @@ function Confetti() {
   )
 }
 
-export function ResultModal({ open, results, myPlayerId, onBackToLobby }: ResultModalProps) {
+export function ResultModal({ open, results, myPlayerId, isHost, onPlayAgain, onExit }: ResultModalProps) {
   const me = results.find(r => r.playerId === myPlayerId)
   const iWon = me?.isWinner ?? false
   const sorted = [...results].sort((a, b) => a.rank - b.rank)
@@ -84,12 +86,24 @@ export function ResultModal({ open, results, myPlayerId, onBackToLobby }: Result
           ))}
         </div>
         <div className="flex gap-2 relative z-10">
+          {isHost ? (
+            <Button
+              className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+              onClick={onPlayAgain}
+            >
+              もう一度遊ぶ
+            </Button>
+          ) : (
+            <span className="flex-1 text-center text-slate-500 text-xs py-2">
+              ホストの再戦待ち...
+            </span>
+          )}
           <Button
             variant="outline"
             className="flex-1 border-slate-600"
-            onClick={onBackToLobby}
+            onClick={onExit}
           >
-            ロビーへ
+            終了する
           </Button>
         </div>
       </DialogContent>
