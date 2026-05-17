@@ -12,6 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import ThemeToggle from '@/components/layout/ThemeToggle'
 
 interface GuestUser {
   id: string
@@ -68,6 +69,7 @@ export default function Header() {
           Unyamo
         </Link>
         <nav className="flex items-center gap-3">
+          <ThemeToggle />
           {isAuthed ? (
             <>
               <Link
