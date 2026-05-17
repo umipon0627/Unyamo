@@ -35,7 +35,7 @@ export function Hand({ cards, selectedIndices = [], onSelect, faceDown = false, 
               x: xOffset,
               y: isSelected ? -20 : 0,
             }}
-            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 20 }}
           >
             <Card
               card={faceDown ? undefined : card}
