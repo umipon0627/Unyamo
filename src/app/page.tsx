@@ -10,21 +10,59 @@ export default async function LandingPage() {
   if (user) redirect('/play')
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen bg-unyamo-cream">
       <Header />
-      <main className="flex-1 flex flex-col items-center justify-center px-4 text-center">
-        <h1 className="text-4xl font-bold text-emerald-400 mb-4">Unyamo</h1>
-        <p className="text-slate-300 mb-2 max-w-md">
-          オリジナルトランプゲーム「ウニャモ」のオンライン対戦アプリ。
+      <main className="flex-1 flex flex-col items-center justify-center px-4 py-16 text-center">
+        {/* トランプイラスト装飾 */}
+        <div className="relative mb-8 flex items-center justify-center">
+          {/* 奥のカード（左傾き） */}
+          <div
+            className="absolute w-16 h-22 rounded-xl bg-unyamo-surface border-2 border-unyamo-border shadow-[0_4px_16px_-4px_rgba(40,30,20,0.18)] -rotate-12 -translate-x-10 translate-y-1"
+            aria-hidden="true"
+          />
+          {/* 奥のカード（右傾き） */}
+          <div
+            className="absolute w-16 h-22 rounded-xl bg-unyamo-surface border-2 border-unyamo-border shadow-[0_4px_16px_-4px_rgba(40,30,20,0.18)] rotate-12 translate-x-10 translate-y-1"
+            aria-hidden="true"
+          />
+          {/* 手前の中央カード */}
+          <div className="relative w-16 h-22 rounded-xl bg-unyamo-surface border-2 border-unyamo-border shadow-[0_8px_24px_-6px_rgba(40,30,20,0.22)] flex items-center justify-center z-10">
+            <span className="text-3xl" aria-hidden="true">🃏</span>
+          </div>
+        </div>
+
+        {/* メインコピー */}
+        <p className="font-heading text-sm font-bold text-unyamo-ink-muted tracking-widest uppercase mb-2">
+          CARD GAME
         </p>
-        <p className="text-slate-400 text-sm mb-8 max-w-md">
-          2〜8人で遊べる手札点数最小化ゲーム。手札合計5点以下でウニャモ宣言！
+        <h1 className="font-heading text-6xl font-extrabold text-unyamo-ink mb-4 leading-none">
+          Unyamo
+        </h1>
+        <p className="text-unyamo-ink-muted text-base mb-2 max-w-xs leading-relaxed">
+          手札の合計点を最小化して<br />
+          「ウニャモ！」を宣言しよう。
         </p>
-        <Link href="/login">
-          <Button size="lg" className="bg-emerald-500 hover:bg-emerald-600">
-            遊ぶ
-          </Button>
-        </Link>
+        <p className="text-unyamo-ink-muted/70 text-sm mb-10 max-w-xs">
+          2〜8人で遊べる、オリジナルトランプゲーム。
+        </p>
+
+        {/* CTA */}
+        <div className="flex flex-col items-center gap-4 w-full max-w-xs">
+          <Link href="/login" className="w-full">
+            <Button
+              size="lg"
+              className="w-full bg-unyamo-green text-unyamo-cream font-heading font-bold text-lg shadow-[0_6px_20px_-4px_rgba(30,107,77,0.40)] hover:shadow-[0_8px_24px_-4px_rgba(30,107,77,0.50)] hover:scale-[1.03] active:scale-95 transition-all"
+            >
+              はじめる
+            </Button>
+          </Link>
+          <Link
+            href="/rules"
+            className="font-heading font-bold text-unyamo-ink-muted hover:text-unyamo-ink text-sm underline underline-offset-4 decoration-unyamo-border hover:decoration-unyamo-ink-muted transition-colors"
+          >
+            ルールを見る
+          </Link>
+        </div>
       </main>
       <Footer />
     </div>
