@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Bot, Users, BookOpen } from 'lucide-react'
 import Header from '@/components/layout/Header'
+import Footer from '@/components/layout/Footer'
 import { Badge } from '@/components/ui/badge'
 import { getCurrentUser } from '@/lib/current-user'
 
@@ -100,6 +101,7 @@ export default async function PlayPage() {
           </Link>
         </div>
       </main>
+      <Footer />
     </div>
   )
 }

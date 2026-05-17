@@ -4,22 +4,35 @@
 // SSR hydration不整合・set-state-in-effect lintエラーを避けるため
 // stateを使わずrefとDOMのclassList操作で実現する。
 
-import { useRef, useCallback } from 'react'
+import { useRef, useCallback, useEffect } from 'react'
+
+function syncButton(btn: HTMLButtonElement | null, isDark: boolean) {
+  if (!btn) return
+  btn.textContent = isDark ? '☀️' : '🌙'
+  btn.setAttribute('aria-pressed', String(isDark))
+  btn.setAttribute(
+    'aria-label',
+    isDark ? 'ライトモードに切り替え' : 'ダークモードに切り替え',
+  )
+}
 
 export default function ThemeToggle() {
   const btnRef = useRef<HTMLButtonElement>(null)
 
+  // マウント時、レイアウトの復元スクリプトが付与した実DOM状態にボタン表示を同期
+  // (setStateではなくref経由のDOM更新なのでhydration不整合/lintを回避)
+  useEffect(() => {
+    syncButton(btnRef.current, document.documentElement.classList.contains('dark'))
+  }, [])
+
   const toggle = useCallback(() => {
     const isDark = document.documentElement.classList.toggle('dark')
-    localStorage.setItem('unyamo-theme', isDark ? 'dark' : 'light')
-    if (btnRef.current) {
-      btnRef.current.textContent = isDark ? '☀️' : '🌙'
-      btnRef.current.setAttribute('aria-pressed', String(isDark))
-      btnRef.current.setAttribute(
-        'aria-label',
-        isDark ? 'ライトモードに切り替え' : 'ダークモードに切り替え',
-      )
+    try {
+      localStorage.setItem('unyamo-theme', isDark ? 'dark' : 'light')
+    } catch {
+      /* localStorage 利用不可環境は無視 */
     }
+    syncButton(btnRef.current, isDark)
   }, [])
 
   // 初期テキストは🌙固定（クライアント描画後にhydrationなし）

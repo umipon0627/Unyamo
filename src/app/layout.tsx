@@ -41,8 +41,17 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="ja" className={`${inter.variable} ${mPlusRounded.variable} ${jetbrainsMono.variable}`}>
-      <body className="font-sans bg-background text-foreground min-h-screen antialiased">
+    <html lang="ja" className={`${inter.variable} ${mPlusRounded.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
+      <head>
+        {/* テーマ復元: ペイント前にlocalStorageからダーク設定を適用（FOUC回避）。静的文字列・ユーザー入力なし */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{if(localStorage.getItem('unyamo-theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}",
+          }}
+        />
+      </head>
+      <body className="font-sans bg-background text-foreground min-h-screen antialiased" suppressHydrationWarning>
         <SessionProviderWrapper>
           {children}
         </SessionProviderWrapper>

@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import Header from '@/components/layout/Header'
+import Footer from '@/components/layout/Footer'
 import { RoomList } from '@/components/lobby/RoomList'
 import { CreateRoomDialog } from '@/components/lobby/CreateRoomDialog'
 import { JoinRoomDialog } from '@/components/lobby/JoinRoomDialog'
@@ -35,6 +36,7 @@ export default async function LobbyPage() {
         </div>
         <RoomList currentUserId={user.id} />
       </main>
+      <Footer />
     </div>
   )
 }

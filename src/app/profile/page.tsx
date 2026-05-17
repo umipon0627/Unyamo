@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import Header from '@/components/layout/Header'
+import Footer from '@/components/layout/Footer'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { getCurrentUser } from '@/lib/current-user'
 import { prisma } from '@/lib/db'
@@ -222,6 +223,7 @@ export default async function ProfilePage() {
           </>
         )}
       </main>
+      <Footer />
     </div>
   )
 }
