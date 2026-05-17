@@ -17,3 +17,5 @@ tsconfig.tsbuildinfo
 .partykit/
 playwright-report/
 test-results/
+screenshot-*.png
+console-*.txt

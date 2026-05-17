@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next'
+import Script from 'next/script'
 import { Inter, M_PLUS_Rounded_1c, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import SessionProviderWrapper from '@/components/providers/SessionProviderWrapper'
@@ -42,16 +43,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ja" className={`${inter.variable} ${mPlusRounded.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
-      <head>
-        {/* テーマ復元: ペイント前にlocalStorageからダーク設定を適用（FOUC回避）。静的文字列・ユーザー入力なし */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html:
-              "try{if(localStorage.getItem('unyamo-theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}",
-          }}
-        />
-      </head>
       <body className="font-sans bg-background text-foreground min-h-screen antialiased" suppressHydrationWarning>
+        {/* テーマ復元: ハイドレーション前にlocalStorageのダーク設定を適用（FOUC回避）。静的文字列・ユーザー入力なし */}
+        <Script id="unyamo-theme-init" strategy="beforeInteractive">
+          {"try{if(localStorage.getItem('unyamo-theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}"}
+        </Script>
         <SessionProviderWrapper>
           {children}
         </SessionProviderWrapper>
