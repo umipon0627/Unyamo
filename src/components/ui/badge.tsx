@@ -5,20 +5,25 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const badgeVariants = cva(
-  "group/badge inline-flex h-5 w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-4xl border border-transparent px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&>svg]:pointer-events-none [&>svg]:size-3!",
+  "group/badge inline-flex h-6 w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-full border border-transparent px-3 py-0.5 text-xs font-heading font-bold whitespace-nowrap transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&>svg]:pointer-events-none [&>svg]:size-3!",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground [a]:hover:bg-primary/80",
+        default:
+          "bg-unyamo-green text-unyamo-cream shadow-sm [a]:hover:bg-unyamo-green/90",
         secondary:
-          "bg-secondary text-secondary-foreground [a]:hover:bg-secondary/80",
+          "bg-unyamo-cream text-unyamo-ink border border-unyamo-border [a]:hover:bg-unyamo-border/50",
         destructive:
-          "bg-destructive/10 text-destructive focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:focus-visible:ring-destructive/40 [a]:hover:bg-destructive/20",
+          "bg-unyamo-red/10 text-unyamo-red border border-unyamo-red/20 focus-visible:ring-unyamo-red/20 dark:bg-unyamo-red/20 dark:focus-visible:ring-unyamo-red/40 [a]:hover:bg-unyamo-red/20",
         outline:
-          "border-border text-foreground [a]:hover:bg-muted [a]:hover:text-muted-foreground",
+          "border-2 border-unyamo-border text-unyamo-ink [a]:hover:bg-unyamo-cream",
         ghost:
-          "hover:bg-muted hover:text-muted-foreground dark:hover:bg-muted/50",
-        link: "text-primary underline-offset-4 hover:underline",
+          "hover:bg-unyamo-cream hover:text-unyamo-ink dark:hover:bg-muted/50",
+        link: "text-unyamo-green underline-offset-4 hover:underline",
+        gold:
+          "bg-unyamo-gold text-unyamo-ink shadow-sm [a]:hover:bg-unyamo-gold/90",
+        navy:
+          "bg-unyamo-navy text-white shadow-sm [a]:hover:bg-unyamo-navy/90",
       },
     },
     defaultVariants: {

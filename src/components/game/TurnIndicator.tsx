@@ -13,21 +13,24 @@ export function TurnIndicator({ currentPlayerName, isMyTurn, turnNumber }: TurnI
   return (
     <AnimatePresence mode="wait">
       <motion.div
-        key={currentPlayerName}
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 8 }}
-        transition={{ duration: 0.3 }}
+        key={currentPlayerName + String(isMyTurn)}
+        initial={{ opacity: 0, y: -8, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 8, scale: 0.95 }}
+        transition={{ type: 'spring', stiffness: 260, damping: 20 }}
         className={cn(
-          'px-4 py-2 rounded-full text-sm font-bold text-center',
+          'inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-heading font-bold',
           isMyTurn
-            ? 'bg-emerald-600 text-white'
-            : 'bg-slate-700 text-slate-300',
+            ? 'bg-[#c8202b] text-white shadow shadow-[#c8202b]/40'
+            : 'bg-[#f2eee6]/15 text-[#f2eee6]/80 border border-[#f2eee6]/20',
         )}
       >
+        {isMyTurn && (
+          <span className="w-2 h-2 rounded-full bg-white/80 animate-pulse" aria-hidden="true" />
+        )}
         {isMyTurn ? 'あなたのターン' : `${currentPlayerName} のターン`}
         {turnNumber !== undefined && (
-          <span className="ml-2 text-xs font-normal opacity-70">Turn {turnNumber}</span>
+          <span className="text-xs font-normal opacity-70">Turn {turnNumber}</span>
         )}
       </motion.div>
     </AnimatePresence>

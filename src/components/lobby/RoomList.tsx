@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { motion, AnimatePresence } from 'framer-motion'
 import { RoomCard } from './RoomCard'
 import {
   Dialog,
@@ -132,70 +133,110 @@ export function RoomList({ currentUserId }: RoomListProps) {
   }, [])
 
   if (loading) {
-    return <p className="text-slate-400 text-center py-8">読み込み中...</p>
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-3">
+        <div className="w-8 h-8 rounded-full border-4 border-unyamo-border border-t-unyamo-green animate-spin" />
+        <p className="text-unyamo-ink-muted text-sm">読み込み中...</p>
+      </div>
+    )
   }
+
   if (error) {
-    return <p className="text-red-400 text-center py-8">{error}</p>
-  }
-  if (rooms.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-slate-400 mb-2">募集中のルームがありません</p>
-        <p className="text-slate-500 text-sm">最初のルームを作成しましょう！</p>
+        <p className="text-unyamo-red text-sm font-medium">{error}</p>
       </div>
+    )
+  }
+
+  if (rooms.length === 0) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col items-center justify-center py-16 gap-3"
+      >
+        <div className="w-16 h-16 rounded-full bg-unyamo-border/50 flex items-center justify-center text-3xl">
+          🃏
+        </div>
+        <p className="text-unyamo-ink font-heading font-bold text-base">募集中のルームがありません</p>
+        <p className="text-unyamo-ink-muted text-sm">最初のルームを作成しましょう！</p>
+      </motion.div>
     )
   }
 
   return (
     <>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {rooms.map(room => (
-          <RoomCard
-            key={room.id}
-            room={room}
-            currentUserId={currentUserId}
-            onJoin={handleJoin}
-            onDeleted={refresh}
-          />
-        ))}
+      {/* ルーム件数 */}
+      <p className="text-unyamo-ink-muted text-xs mb-3">
+        {rooms.length} 件のルームが見つかりました
+      </p>
+
+      <div className="flex flex-col gap-2">
+        <AnimatePresence initial={false}>
+          {rooms.map(room => (
+            <RoomCard
+              key={room.id}
+              room={room}
+              currentUserId={currentUserId}
+              onJoin={handleJoin}
+              onDeleted={refresh}
+            />
+          ))}
+        </AnimatePresence>
       </div>
 
+      {/* パスワード入力ダイアログ */}
       <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
-        <DialogContent>
+        <DialogContent className="bg-unyamo-surface border-unyamo-border rounded-3xl max-w-sm shadow-xl">
           <DialogHeader>
-            <DialogTitle>パスワードを入力</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="font-heading font-bold text-unyamo-ink text-lg">
+              パスワードを入力
+            </DialogTitle>
+            <DialogDescription className="text-unyamo-ink-muted text-sm">
               「{pendingRoomName}」はプライベートルームです。参加にはパスワードが必要です。
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="room-password">パスワード</Label>
-            <Input
-              id="room-password"
-              type="password"
-              value={passwordInput}
-              onChange={e => setPasswordInput(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') void handlePasswordSubmit() }}
-              placeholder="パスワードを入力してください"
-              aria-invalid={passwordError !== '' ? true : undefined}
-            />
-            {passwordError && (
-              <p className="text-sm text-destructive">{passwordError}</p>
-            )}
+          <div className="flex flex-col gap-3 mt-1">
+            <div>
+              <Label
+                htmlFor="room-password"
+                className="text-unyamo-ink text-sm font-medium mb-1.5 block"
+              >
+                パスワード
+              </Label>
+              <Input
+                id="room-password"
+                type="password"
+                value={passwordInput}
+                onChange={e => setPasswordInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') void handlePasswordSubmit() }}
+                placeholder="パスワードを入力してください"
+                aria-invalid={passwordError !== '' ? true : undefined}
+                className="rounded-xl border-unyamo-border bg-unyamo-cream text-unyamo-ink placeholder:text-unyamo-ink-muted/60"
+              />
+              {passwordError && (
+                <p className="text-sm text-unyamo-red mt-1.5 font-medium" role="alert">
+                  {passwordError}
+                </p>
+              )}
+            </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="gap-2 mt-2">
             <Button
               variant="outline"
               onClick={() => handleDialogOpenChange(false)}
               disabled={verifying}
+              className="rounded-full border-unyamo-border text-unyamo-ink-muted hover:bg-unyamo-cream font-heading font-bold"
             >
               キャンセル
             </Button>
             <Button
               onClick={() => void handlePasswordSubmit()}
               disabled={verifying || !passwordInput}
+              className="rounded-full bg-unyamo-green text-white hover:bg-unyamo-green/90 font-heading font-bold"
             >
               {verifying ? '確認中...' : '参加する'}
             </Button>

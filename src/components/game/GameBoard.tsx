@@ -135,12 +135,30 @@ export function GameBoard({ roomId, myPlayerId, token }: GameBoardProps) {
   const hasUsedSpecial = !availableActions.includes('DISCARD_MULTIPLE') && canDiscard
 
   if (status === 'connecting') {
-    return <div className="flex items-center justify-center h-screen text-slate-400">接続中...</div>
+    return (
+      <div className="flex items-center justify-center h-screen bg-felt">
+        <p className="text-[#f2eee6]/60 font-heading text-lg">接続中...</p>
+      </div>
+    )
   }
   if (status === 'error' || status === 'closed') {
-    return <div className="flex items-center justify-center h-screen text-red-400">接続エラー。ページを再読み込みしてください。</div>
+    return (
+      <div className="flex items-center justify-center h-screen bg-felt">
+        <p className="text-[#e97179] font-heading text-lg">接続エラー。ページを再読み込みしてください。</p>
+      </div>
+    )
   }
   if (phase === 'WAITING') {
+    // CPU対戦は待機室を挟まず即開始（START_CPU_GAMEは別useEffectで自動送信済み）。
+    // サーバー応答までの一瞬だけローディングを見せる。
+    if (isCpuRoom) {
+      return (
+        <div className="flex flex-col items-center justify-center h-screen bg-felt gap-4">
+          <div className="w-12 h-12 rounded-full border-4 border-[#e5b649]/30 border-t-[#e5b649] animate-spin" />
+          <p className="text-[#f2eee6]/80 font-heading text-lg font-bold">ゲームを準備中...</p>
+        </div>
+      )
+    }
     return (
       <WaitingRoom
         roomId={roomId}
@@ -156,37 +174,66 @@ export function GameBoard({ roomId, myPlayerId, token }: GameBoardProps) {
     )
   }
   if (!gameState) {
-    return <div className="flex items-center justify-center h-screen text-slate-400">接続中...</div>
+    return (
+      <div className="flex items-center justify-center h-screen bg-felt">
+        <p className="text-[#f2eee6]/60 font-heading text-lg">接続中...</p>
+      </div>
+    )
   }
 
+  const currentPlayerName = others.find(p => p.id === currentPlayerId)?.name ?? 'あなた'
+
   return (
-    <div className="relative flex flex-col h-screen bg-slate-900 overflow-hidden select-none">
-      {/* Unyamo flash overlay */}
+    <div className="relative flex flex-col h-screen bg-felt overflow-hidden select-none">
+      {/* ウニャモ宣言フラッシュ（金色放射グロー） */}
       <AnimatePresence>
         {showUnyamoFlash && (
           <motion.div
-            className="absolute inset-0 bg-amber-400/30 z-50 pointer-events-none"
+            className="absolute inset-0 z-50 pointer-events-none"
+            style={{
+              background: 'radial-gradient(ellipse at 50% 50%, rgba(229,182,73,0.55) 0%, rgba(229,182,73,0.15) 50%, transparent 75%)',
+            }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
+            transition={{ duration: 0.35 }}
+            aria-hidden="true"
           />
         )}
       </AnimatePresence>
 
-      {/* Header: turn indicator */}
-      <div className="flex items-center justify-center py-2 px-4 bg-slate-800 border-b border-slate-700 flex-shrink-0">
-        <TurnIndicator
-          currentPlayerName={others.find(p => p.id === currentPlayerId)?.name ?? 'あなた'}
-          isMyTurn={isMyTurn}
-        />
-      </div>
+      {/* ===== 上部ヘッダー ===== */}
+      <header className="flex-shrink-0 bg-felt-panel border-b border-[#f2eee6]/10 px-4 py-2 flex items-center justify-between gap-2">
+        {/* 戻るボタン */}
+        <button
+          className="w-8 h-8 flex items-center justify-center rounded-full bg-[#f2eee6]/10 text-[#f2eee6]/70 hover:bg-[#f2eee6]/20 transition-colors"
+          onClick={handleExit}
+          aria-label="退出して戻る"
+        >
+          ←
+        </button>
 
-      {/* Main area */}
-      <div className="flex-1 flex flex-col lg:grid lg:grid-cols-[1fr_2fr_1fr] overflow-hidden p-2 gap-2">
-        {/* Other players - mobile: top row, desktop: left+right columns */}
-        <div className="flex flex-row justify-around lg:flex-col lg:justify-start gap-2 flex-shrink-0">
-          {others.slice(0, Math.ceil(others.length / 2)).map(p => (
+        {/* 中央: ターンインジケーター */}
+        <div className="flex-1 flex justify-center">
+          <TurnIndicator
+            currentPlayerName={currentPlayerName}
+            isMyTurn={isMyTurn}
+          />
+        </div>
+
+        {/* 右: 山札残枚数バッジ */}
+        <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#f2eee6]/10 border border-[#f2eee6]/10">
+          <span className="text-[#f2eee6]/50 text-xs" aria-hidden="true">🃏</span>
+          <span className="text-[#f2eee6]/70 text-xs font-heading font-bold" aria-label={`山札残り${gameState.deckCount}枚`}>
+            {gameState.deckCount}
+          </span>
+        </div>
+      </header>
+
+      {/* ===== 相手プレイヤーエリア（横並びチップ） ===== */}
+      {others.length > 0 && (
+        <div className="flex-shrink-0 px-3 py-2 flex flex-row flex-wrap justify-center gap-2">
+          {others.map(p => (
             <PlayerArea
               key={p.id}
               player={{ ...p, cardCount: p.cardCount, image: undefined }}
@@ -197,9 +244,28 @@ export function GameBoard({ roomId, myPlayerId, token }: GameBoardProps) {
             />
           ))}
         </div>
+      )}
 
-        {/* Center: deck + discard */}
-        <div className="flex items-center justify-center gap-6 flex-shrink-0">
+      {/* ===== 中央エリア: 山札 + 捨て札 ===== */}
+      <div className="flex-1 flex items-center justify-center gap-8 px-4 min-h-0">
+        {/* デスクトップ: 左側の追加プレイヤー（3人以上） */}
+        {others.length > 2 && (
+          <div className="hidden md:flex flex-col gap-2">
+            {others.slice(2).map(p => (
+              <PlayerArea
+                key={p.id}
+                player={{ ...p, cardCount: p.cardCount, image: undefined }}
+                isCurrentTurn={p.id === currentPlayerId}
+                hasDeclaredUnyamo={p.id === unyamoDeclarerId}
+                position="left"
+                compact
+              />
+            ))}
+          </div>
+        )}
+
+        {/* 山札 + 捨て札 */}
+        <div className="flex items-center justify-center gap-6">
           <Deck
             remaining={gameState.deckCount}
             onDraw={canDrawDeck ? () => handleDraw('deck') : undefined}
@@ -211,25 +277,22 @@ export function GameBoard({ roomId, myPlayerId, token }: GameBoardProps) {
             canPickup={canDrawDiscard}
           />
         </div>
-
-        {/* Right column on desktop: remaining players */}
-        <div className="hidden lg:flex flex-col justify-start gap-2">
-          {others.slice(Math.ceil(others.length / 2)).map(p => (
-            <PlayerArea
-              key={p.id}
-              player={{ ...p, cardCount: p.cardCount, image: undefined }}
-              isCurrentTurn={p.id === currentPlayerId}
-              hasDeclaredUnyamo={p.id === unyamoDeclarerId}
-              position="right"
-              compact
-            />
-          ))}
-        </div>
       </div>
 
-      {/* Bottom: my hand + actions */}
-      <div className="flex-shrink-0 bg-slate-800 border-t border-slate-700 pb-safe">
-        <div className="flex flex-col items-center gap-2 py-3 px-4">
+      {/* ===== 下部: 手札 + アクションパネル ===== */}
+      <div className="flex-shrink-0 bg-felt-panel border-t border-[#f2eee6]/10 pb-safe">
+        <div className="flex flex-col items-center gap-3 pt-3 pb-3 px-4">
+          {/* 手札ラベル */}
+          <div className="flex items-center gap-2">
+            <span className="text-[#f2eee6]/50 text-xs font-heading font-bold uppercase tracking-wider">
+              YOUR HAND
+            </span>
+            <span className="w-5 h-5 rounded-full bg-[#f2eee6]/15 text-[#f2eee6]/70 text-[10px] font-heading font-bold flex items-center justify-center">
+              {myHand.length}
+            </span>
+          </div>
+
+          {/* 手札扇形 */}
           <Hand
             cards={myHand}
             selectedIndices={selectedIndices}
@@ -237,7 +300,9 @@ export function GameBoard({ roomId, myPlayerId, token }: GameBoardProps) {
             size="md"
             isMobile
           />
-          <div className="flex items-center gap-3 flex-wrap justify-center">
+
+          {/* アクションボタン行 */}
+          <div className="flex items-center gap-3 flex-wrap justify-center pt-1">
             <ActionPanel
               isMyTurn={isMyTurn}
               canDiscard={canDiscard}
@@ -257,11 +322,13 @@ export function GameBoard({ roomId, myPlayerId, token }: GameBoardProps) {
               onDeclare={handleDeclareUnyamo}
             />
           </div>
-          <p className="text-slate-500 text-xs">合計: {gameState.myTotalScore}点</p>
+
+          {/* 合計スコア */}
+          <p className="text-[#f2eee6]/40 text-xs">合計: {gameState.myTotalScore}点</p>
         </div>
       </div>
 
-      {/* Result modal */}
+      {/* リザルトモーダル */}
       <ResultModal
         open={phase === 'RESULT' && !!results}
         results={results?.results ?? []}

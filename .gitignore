@@ -14,3 +14,8 @@ public/workbox-*.js.map
 .playwright-mcp/
 *.png
 tsconfig.tsbuildinfo
+.partykit/
+playwright-report/
+test-results/
+screenshot-*.png
+console-*.txt

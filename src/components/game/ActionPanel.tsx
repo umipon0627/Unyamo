@@ -1,6 +1,6 @@
 'use client'
 
-import { Button } from '@/components/ui/button'
+import { motion } from 'framer-motion'
 import type { Card } from '@/types/card'
 
 interface ActionPanelProps {
@@ -32,64 +32,79 @@ export function ActionPanel({
 }: ActionPanelProps) {
   if (!isMyTurn) {
     return (
-      <div className="flex items-center justify-center p-3 text-slate-500 text-sm">
-        他のプレイヤーのターンです
+      <div className="flex items-center justify-center px-4 py-2 text-[#f2eee6]/40 text-sm">
+        相手のターンです
       </div>
     )
   }
 
   return (
-    <div className="flex flex-wrap gap-2 justify-center p-2">
+    <div className="flex flex-wrap gap-2 justify-center">
       {/* ACTION_PHASE: 1枚捨てる / まとめて捨てる */}
       {canDiscard && selectedCount === 1 && (
-        <Button
-          size="sm"
-          className="bg-emerald-600 hover:bg-emerald-700"
+        <motion.button
+          className="px-5 py-2.5 rounded-full bg-[#c8202b] text-white font-heading font-bold text-sm
+            shadow-lg shadow-[#c8202b]/30 hover:bg-[#a81820] disabled:opacity-50 disabled:cursor-not-allowed"
+          whileTap={{ scale: 0.94 }}
+          whileHover={{ scale: 1.03 }}
+          transition={{ type: 'spring', stiffness: 260, damping: 20 }}
           onClick={onDiscard}
           disabled={disabled}
+          aria-label="選択した1枚を捨てる"
         >
-          1枚捨てる
-        </Button>
+          捨てる
+        </motion.button>
       )}
       {canDiscard && selectedCount >= 2 && !hasUsedSpecial && (
-        <Button
-          size="sm"
-          className="bg-emerald-600 hover:bg-emerald-700"
+        <motion.button
+          className="px-5 py-2.5 rounded-full bg-[#c8202b] text-white font-heading font-bold text-sm
+            shadow-lg shadow-[#c8202b]/30 hover:bg-[#a81820] disabled:opacity-50 disabled:cursor-not-allowed"
+          whileTap={{ scale: 0.94 }}
+          whileHover={{ scale: 1.03 }}
+          transition={{ type: 'spring', stiffness: 260, damping: 20 }}
           onClick={onDiscardMultiple}
           disabled={disabled}
+          aria-label={`選択した${selectedCount}枚をまとめて捨てる`}
         >
-          {selectedCount}枚まとめて捨てる
-        </Button>
+          捨てる（{selectedCount}枚）
+        </motion.button>
       )}
       {canDiscard && selectedCount === 0 && (
-        <span className="text-slate-500 text-sm py-1">捨てるカードを選んでください</span>
+        <span className="text-[#f2eee6]/50 text-sm py-1">捨てるカードを選んでください</span>
       )}
 
-      {/* DRAW_PHASE: 山札から引く / 捨て札から拾う */}
+      {/* DRAW_PHASE: 山札から引く */}
       {isDrawPhase && canDrawDeck && (
-        <Button
-          size="sm"
-          variant="outline"
-          className="border-slate-600"
+        <motion.button
+          className="px-5 py-2.5 rounded-full bg-[#1f7a6c] text-white font-heading font-bold text-sm
+            shadow-lg shadow-[#1f7a6c]/30 hover:bg-[#175e52] disabled:opacity-50 disabled:cursor-not-allowed"
+          whileTap={{ scale: 0.94 }}
+          whileHover={{ scale: 1.03 }}
+          transition={{ type: 'spring', stiffness: 260, damping: 20 }}
           onClick={() => onDraw('deck')}
           disabled={disabled}
+          aria-label="山札から1枚引く"
         >
-          山札から引く
-        </Button>
+          引く
+        </motion.button>
       )}
+      {/* DRAW_PHASE: 捨て札から拾う */}
       {isDrawPhase && canDrawDiscard && (
-        <Button
-          size="sm"
-          variant="outline"
-          className="border-emerald-700 text-emerald-400"
+        <motion.button
+          className="px-5 py-2.5 rounded-full border-2 border-[#2e9c8a] text-[#2e9c8a] font-heading font-bold text-sm
+            bg-[#2e9c8a]/10 hover:bg-[#2e9c8a]/20 disabled:opacity-50 disabled:cursor-not-allowed"
+          whileTap={{ scale: 0.94 }}
+          whileHover={{ scale: 1.03 }}
+          transition={{ type: 'spring', stiffness: 260, damping: 20 }}
           onClick={() => onDraw('discard')}
           disabled={disabled}
+          aria-label="捨て札から1枚拾う"
         >
           捨て札から拾う
-        </Button>
+        </motion.button>
       )}
       {isDrawPhase && !canDrawDeck && !canDrawDiscard && (
-        <span className="text-slate-500 text-sm py-1">
+        <span className="text-[#f2eee6]/40 text-sm py-1">
           {discardTop
             ? '捨て札は今自分が捨てたばかりのため拾えません'
             : '引けるカードがありません'}

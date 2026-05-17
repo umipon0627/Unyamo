@@ -1,9 +1,16 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter } from 'next/font/google'
+import Script from 'next/script'
+import { Inter, M_PLUS_Rounded_1c, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import SessionProviderWrapper from '@/components/providers/SessionProviderWrapper'
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({ subsets: ['latin'], variable: '--font-sans' })
+const mPlusRounded = M_PLUS_Rounded_1c({
+  weight: ['500', '700', '800'],
+  subsets: ['latin'],
+  variable: '--font-heading',
+})
+const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono' })
 
 export const metadata: Metadata = {
   title: 'Unyamo',
@@ -25,7 +32,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: '#0f172a',
+  themeColor: '#fbf6ec',
   viewportFit: 'cover',
 }
 
@@ -35,8 +42,12 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="ja" className="dark">
-      <body className={`${inter.className} bg-slate-900 text-slate-100 min-h-screen`}>
+    <html lang="ja" className={`${inter.variable} ${mPlusRounded.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
+      <body className="font-sans bg-background text-foreground min-h-screen antialiased" suppressHydrationWarning>
+        {/* テーマ復元: ハイドレーション前にlocalStorageのダーク設定を適用（FOUC回避）。静的文字列・ユーザー入力なし */}
+        <Script id="unyamo-theme-init" strategy="beforeInteractive">
+          {"try{if(localStorage.getItem('unyamo-theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}"}
+        </Script>
         <SessionProviderWrapper>
           {children}
         </SessionProviderWrapper>

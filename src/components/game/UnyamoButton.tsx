@@ -1,7 +1,6 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Button } from '@/components/ui/button'
 
 interface UnyamoButtonProps {
   canDeclare: boolean
@@ -23,7 +22,7 @@ interface UnyamoButtonProps {
 export function UnyamoButton({ canDeclare, hasDeclared, onDeclare }: UnyamoButtonProps) {
   if (hasDeclared) {
     return (
-      <div className="px-4 py-2 bg-amber-900 text-amber-300 rounded-lg text-sm font-bold opacity-60">
+      <div className="px-4 py-2 rounded-full border border-[#e5b649]/40 text-[#f0d89a] text-sm font-heading font-bold opacity-70 bg-[#e5b649]/10">
         ウニャモ宣言済
       </div>
     )
@@ -34,17 +33,19 @@ export function UnyamoButton({ canDeclare, hasDeclared, onDeclare }: UnyamoButto
   return (
     <motion.div
       className="flex flex-col items-center gap-1"
-      animate={{ scale: [1, 1.05, 1] }}
+      animate={{ scale: [1, 1.04, 1] }}
       transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
     >
-      <Button
-        className="h-14 px-6 bg-amber-500 hover:bg-amber-400 text-white font-bold text-lg shadow-lg shadow-amber-900/50"
+      <motion.button
+        className="h-12 px-6 rounded-full border-2 border-[#e5b649] text-[#f0d89a] font-heading font-bold text-base
+          bg-[#e5b649]/10 hover:bg-[#e5b649]/20 shadow-lg shadow-[#e5b649]/20 transition-colors"
+        whileTap={{ scale: 0.94 }}
         onClick={onDeclare}
         aria-label="ウニャモ宣言（任意）"
       >
-        ウニャモ宣言！
-      </Button>
-      <span className="text-amber-300/80 text-[10px]">任意・通常操作も続行可</span>
+        Unyamo!
+      </motion.button>
+      <span className="text-[#f0d89a]/60 text-[10px]">任意・通常操作も続行可</span>
     </motion.div>
   )
 }
