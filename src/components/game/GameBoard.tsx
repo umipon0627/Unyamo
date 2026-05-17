@@ -203,7 +203,7 @@ export function GameBoard({ roomId, myPlayerId, token }: GameBoardProps) {
       </AnimatePresence>
 
       {/* ===== 上部ヘッダー ===== */}
-      <header className="flex-shrink-0 bg-felt-panel border-b border-[#f2eee6]/10 px-4 py-2 flex items-center justify-between gap-2">
+      <header className="flex-shrink-0 bg-felt-panel border-b border-[#f2eee6]/10 px-4 py-2 pt-safe px-safe flex items-center justify-between gap-2">
         {/* 戻るボタン */}
         <button
           className="w-8 h-8 flex items-center justify-center rounded-full bg-[#f2eee6]/10 text-[#f2eee6]/70 hover:bg-[#f2eee6]/20 transition-colors"
