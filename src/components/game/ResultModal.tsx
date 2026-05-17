@@ -5,10 +5,12 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle
 } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
+import type { Card } from '@/types/card'
 
 interface ResultEntry {
   playerId: string
   playerName: string
+  hand: Card[]
   totalScore: number
   rank: number
   declared: boolean
@@ -145,11 +147,9 @@ export function ResultModal({ open, results, myPlayerId, isHost, onPlayAgain, on
                     <span className="text-[9px] bg-[#e5b649]/15 text-[#c99634] rounded-full px-1.5 py-0.5 font-heading font-bold">宣言</span>
                   )}
                 </div>
-                {r.declared ? (
-                  <p className="text-[10px] text-[#7a6a52]">ウニャモ宣言・手札0</p>
-                ) : (
-                  <p className="text-[10px] text-[#7a6a52]">残り手札{r.totalScore > 0 ? '' : ''}計算済</p>
-                )}
+                <p className="text-[10px] text-[#7a6a52]">
+                  {r.declared ? `ウニャモ宣言・手札${r.hand.length}枚` : `残り手札${r.hand.length}枚`}
+                </p>
               </div>
               {/* 得点 */}
               <span className={cn(
