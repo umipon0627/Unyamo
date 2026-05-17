@@ -60,7 +60,7 @@ export default function Header() {
   const isGuest = !session && !!guest
 
   return (
-    <header className="border-b-2 border-unyamo-border bg-unyamo-surface/90 backdrop-blur-sm sticky top-0 z-40">
+    <header className="border-b-2 border-unyamo-border bg-unyamo-surface/90 backdrop-blur-sm sticky top-0 z-40 pt-safe px-safe">
       <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
         <Link
           href="/"
