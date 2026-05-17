@@ -149,6 +149,16 @@ export function GameBoard({ roomId, myPlayerId, token }: GameBoardProps) {
     )
   }
   if (phase === 'WAITING') {
+    // CPU対戦は待機室を挟まず即開始（START_CPU_GAMEは別useEffectで自動送信済み）。
+    // サーバー応答までの一瞬だけローディングを見せる。
+    if (isCpuRoom) {
+      return (
+        <div className="flex flex-col items-center justify-center h-screen bg-felt gap-4">
+          <div className="w-12 h-12 rounded-full border-4 border-[#e5b649]/30 border-t-[#e5b649] animate-spin" />
+          <p className="text-[#f2eee6]/80 font-heading text-lg font-bold">ゲームを準備中...</p>
+        </div>
+      )
+    }
     return (
       <WaitingRoom
         roomId={roomId}
