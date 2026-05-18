@@ -10,16 +10,17 @@ export interface PlayerState {
   isConnected: boolean
   lastActiveAt: number
   /**
-   * このターンでDISCARD（手札からカードを捨てる/特殊操作で複数捨てる）を完了したか。
-   * 仕様 2.6節: ターンの流れは「ACTION_PHASE（捨てる）→ DRAW_PHASE（引く/拾う）→ TURN_END」。
-   * - false: DISCARD_PHASE（手札から1枚捨てる、または特殊操作で2-3枚捨てる）
-   * - true:  DRAW_PHASE（山札から引く / 捨て札から拾う）
-   */
-  hasDiscardedThisTurn: boolean
-  /**
-   * このターンでDRAW（引く/拾う）相当の操作を完了したか（自動操作などで使用）。
+   * このターンでDRAW（山札/捨て札から引く）を完了したか。
+   * 仕様 2.6節: ターンの流れは「DRAW_PHASE（引く/拾う）→ DISCARD_PHASE（捨てる）→ TURN_END」。
+   * - false: DRAW_PHASE（山札から引く / 捨て札から拾う）またはウニャモ宣言フェーズ
+   * - true:  DISCARD_PHASE（手札から1枚捨てる、または特殊操作で2-3枚捨てる）
    */
   hasDrawnThisTurn: boolean
+  /**
+   * このターンでDISCARD（手札からカードを捨てる/特殊操作で複数捨てる）を完了したか。
+   * DISCARD完了 → ターン終了・次プレイヤーへ。
+   */
+  hasDiscardedThisTurn: boolean
   hasUsedSpecialAction: boolean // 1ターン中1回の特殊操作制限用
 }
 
@@ -36,9 +37,10 @@ export interface GameState {
   roomConfig: RoomConfig
   startedAt: number | null
   /**
-   * 「現在のターンプレイヤーが、このターンのACTION_PHASEで捨てたカードのID」一覧。
-   * DRAW_PHASEで「自分が今捨てたカードを再度拾えない」制約に使う。
-   * advanceTurnでクリアされる。
+   * このフィールドはDRAW→DISCARD順序では実質使用しない。
+   * DRAW→DISCARDの順序では自分が捨てたカードを同ターンで拾う状況が発生しないため、
+   * 「自分が今捨てたカードを直後に拾う」制約は不要になった。
+   * 後方互換のため型定義は維持。advanceTurnでクリアされる。
    */
   lastDiscardedCardIds: string[]
 }

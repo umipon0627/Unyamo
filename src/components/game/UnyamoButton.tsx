@@ -31,14 +31,20 @@ export function UnyamoButton({ canDeclare, hasDeclared, onDeclare }: UnyamoButto
   if (!canDeclare) return null
 
   return (
-    <motion.div
-      className="flex flex-col items-center gap-1"
-      animate={{ scale: [1, 1.04, 1] }}
-      transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
-    >
+    <div className="flex flex-col items-center gap-1">
+      {/* レイアウト位置を変えない発光パルスで注意喚起（クリック安定性を確保） */}
       <motion.button
         className="h-12 px-6 rounded-full border-2 border-[#e5b649] text-[#f0d89a] font-heading font-bold text-base
-          bg-[#e5b649]/10 hover:bg-[#e5b649]/20 shadow-lg shadow-[#e5b649]/20 transition-colors"
+          bg-[#e5b649]/10 hover:bg-[#e5b649]/20 transition-colors"
+        animate={{
+          boxShadow: [
+            '0 0 0 0 rgba(229,182,73,0.0)',
+            '0 0 16px 4px rgba(229,182,73,0.45)',
+            '0 0 0 0 rgba(229,182,73,0.0)',
+          ],
+        }}
+        transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+        whileHover={{ scale: 1.04 }}
         whileTap={{ scale: 0.94 }}
         onClick={onDeclare}
         aria-label="ウニャモ宣言（任意）"
@@ -46,6 +52,6 @@ export function UnyamoButton({ canDeclare, hasDeclared, onDeclare }: UnyamoButto
         Unyamo!
       </motion.button>
       <span className="text-[#f0d89a]/60 text-[10px]">任意・通常操作も続行可</span>
-    </motion.div>
+    </div>
   )
 }

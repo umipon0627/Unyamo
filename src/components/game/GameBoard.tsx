@@ -102,6 +102,7 @@ export function GameBoard({ roomId, myPlayerId, token }: GameBoardProps) {
   }, [selectedIndices, myHand, send])
 
   const handleDraw = useCallback((source: 'deck' | 'discard') => {
+    setSelectedIndices([])
     send({ type: 'DRAW', payload: { source } })
   }, [send])
 
@@ -133,6 +134,11 @@ export function GameBoard({ roomId, myPlayerId, token }: GameBoardProps) {
     (gameState?.canPickupFromDiscard ?? false)
   const canDeclare = availableActions.includes('DECLARE_UNYAMO')
   const hasUsedSpecial = !availableActions.includes('DISCARD_MULTIPLE') && canDiscard
+
+  // 自分の捨てフェーズ以外（相手番・引く前・ターン終了後）では選択を無効化して扱う。
+  // 保持はしても表示・送信には使わないことで、DRAW直後の誤捨てや相手番の選択残りを防ぐ
+  // （setState副作用を使わず派生値で表現＝再レンダー連鎖を避ける）。
+  const activeSelected = isMyTurn && canDiscard ? selectedIndices : []
 
   if (status === 'connecting') {
     return (
@@ -295,7 +301,7 @@ export function GameBoard({ roomId, myPlayerId, token }: GameBoardProps) {
           {/* 手札扇形 */}
           <Hand
             cards={myHand}
-            selectedIndices={selectedIndices}
+            selectedIndices={activeSelected}
             onSelect={isMyTurn && canDiscard ? handleCardSelect : undefined}
             size="md"
             isMobile
@@ -309,7 +315,7 @@ export function GameBoard({ roomId, myPlayerId, token }: GameBoardProps) {
               isDrawPhase={isDrawPhase}
               canDrawDeck={canDrawDeck}
               canDrawDiscard={canDrawDiscard}
-              selectedCount={selectedIndices.length}
+              selectedCount={activeSelected.length}
               hasUsedSpecial={hasUsedSpecial}
               onDraw={handleDraw}
               onDiscard={handleDiscard}
