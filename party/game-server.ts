@@ -44,15 +44,6 @@ export default class GameServer implements Party.Server {
   }
 
   async onMessage(message: string, sender: Party.Connection) {
-    // レート制限: 1秒1回（CPUプレイヤーはレート制限対象外）
-    const now = Date.now()
-    const last = this.lastMessageAt.get(sender.id) ?? 0
-    if (now - last < 1000) {
-      send(sender, { type: 'ERROR', payload: { code: 'RATE_LIMITED', message: 'Too many messages' } })
-      return
-    }
-    this.lastMessageAt.set(sender.id, now)
-
     const parsed = clientMessageSchema.safeParse(JSON.parse(message))
     if (!parsed.success) {
       send(sender, { type: 'ERROR', payload: { code: 'INVALID_MESSAGE', message: 'Invalid message format' } })
@@ -60,6 +51,22 @@ export default class GameServer implements Party.Server {
     }
 
     const msg = parsed.data
+
+    // レート制限: ゲーム操作系のみ1秒1回（連打防止）。
+    // JOIN/START系/RECONNECT/RESTART等のライフサイクル系は対象外
+    // （JOIN直後にSTART_CPU_GAMEを送る等の正当な連続送信をブロックしないため）。
+    const RATE_LIMITED_TYPES = new Set([
+      'DISCARD', 'DISCARD_MULTIPLE', 'DRAW', 'DECLARE_UNYAMO',
+    ])
+    if (RATE_LIMITED_TYPES.has(msg.type)) {
+      const now = Date.now()
+      const last = this.lastMessageAt.get(sender.id) ?? 0
+      if (now - last < 1000) {
+        send(sender, { type: 'ERROR', payload: { code: 'RATE_LIMITED', message: 'Too many messages' } })
+        return
+      }
+      this.lastMessageAt.set(sender.id, now)
+    }
     switch (msg.type) {
       case 'JOIN': return this.handleJoin(sender, msg.payload.token)
       case 'START_GAME': return this.handleStartGame(sender)
