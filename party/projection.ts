@@ -13,20 +13,20 @@ export function projectStateForPlayer(
 
   const availableActions: string[] = []
   const currentPlayerId = state.turnOrder[state.currentTurnIndex]
-  // 仕様 2.6節: ターンの流れは [ウニャモ宣言 or DISCARD] → DRAW → ターン終了。
-  // ウニャモ宣言はターン開始時（まだ何もしていない時）にのみ可能で、
+  // 仕様 2.6節: ターンの流れは [ウニャモ宣言 or DRAW] → DISCARD → ターン終了。
+  // ウニャモ宣言はターン開始時（まだ引いていない時）にのみ可能で、
   // すでに誰かが宣言済みなら不可。
   if (currentPlayerId === playerId && state.phase === 'PLAYING') {
-    if (!me?.hasDiscardedThisTurn) {
-      // ACTION_PHASE: 1枚捨てる / 特殊操作で2-3枚捨てる / ウニャモ宣言
-      availableActions.push('DISCARD')
-      if (!me?.hasUsedSpecialAction) availableActions.push('DISCARD_MULTIPLE')
+    if (!me?.hasDrawnThisTurn) {
+      // DRAW_PHASE: 山札から引く / 捨て札から拾う / ウニャモ宣言
+      availableActions.push('DRAW')
       if (canDeclareUnyamo(myHand) && state.unyamoDeclarerId === null) {
         availableActions.push('DECLARE_UNYAMO')
       }
-    } else if (!me?.hasDrawnThisTurn) {
-      // DRAW_PHASE: 山札から引く / 捨て札から拾う
-      availableActions.push('DRAW')
+    } else if (!me?.hasDiscardedThisTurn) {
+      // DISCARD_PHASE: 1枚捨てる / 特殊操作で2-3枚捨てる
+      availableActions.push('DISCARD')
+      if (!me?.hasUsedSpecialAction) availableActions.push('DISCARD_MULTIPLE')
     }
   }
 
@@ -36,15 +36,12 @@ export function projectStateForPlayer(
     playerId === state.hostId
 
   // 仕様 2.3節: 捨て札の一番上から1枚引く。
-  // ただしDISCARD→DRAWの順序のため、自分が今捨てたカードは拾えない。
+  // DRAW→DISCARD順序のため、捨て札拾いはDRAW_PHASE（まだ引いていない状態）に行う。
+  // 自分が今捨てたカードを同ターンで拾う状況はDRAW→DISCARD順序では発生しない。
   const discardTop = state.discardPile[state.discardPile.length - 1] ?? null
-  const isOwnLastDiscard =
-    !!discardTop && state.lastDiscardedCardIds.includes(discardTop.id)
   const canPickupFromDiscard =
     !!discardTop &&
-    !!me?.hasDiscardedThisTurn &&
     !me?.hasDrawnThisTurn &&
-    !isOwnLastDiscard &&
     currentPlayerId === playerId &&
     state.phase === 'PLAYING'
 

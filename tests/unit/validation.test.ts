@@ -111,8 +111,9 @@ describe('validateDiscardPickup', () => {
     if (!r.valid) expect(r.code).toBe('DISCARD_EMPTY')
   })
 
-  it('valid when top card was discarded by another player (lastDiscardedCardIds is empty)', () => {
-    // 仕様 2.3節: 捨て札の一番上から1枚引く（自分が捨てたものでなければ拾える）
+  it('valid when discard pile has cards (DRAW→DISCARD順序では自分が捨てたカードを同ターンで拾う状況は発生しない)', () => {
+    // 仕様 2.3節: DRAW→DISCARD順序では、ターン開始時（引く前）に捨て札を拾う。
+    // 自分が今捨てたカードを同ターンで拾う状況は起きないため、lastDiscardedCardIdsチェックは不要。
     const topCard: Card = { id: 'top', suit: 'hearts', rank: 7 }
     const r = validateDiscardPickup(
       makeState({ discardPile: [topCard], lastDiscardedCardIds: [] }),
@@ -121,15 +122,15 @@ describe('validateDiscardPickup', () => {
     expect(r.valid).toBe(true)
   })
 
-  it('invalid when top card was just discarded by current player (lastDiscardedCardIds includes top)', () => {
-    // ACTION_PHASE→DRAW_PHASEの順序のため、自分が今捨てたカードは拾えない
-    const topCard: Card = { id: 'own-card', suit: 'hearts', rank: 7 }
+  it('valid even when lastDiscardedCardIds contains the top card (DRAW→DISCARD順序では制約不要)', () => {
+    // DRAW→DISCARD順序では、引く前に捨て札から拾う。
+    // lastDiscardedCardIdsは前のターンのデータであり、このターンでの制約には使わない。
+    const topCard: Card = { id: 'prev-turn-card', suit: 'hearts', rank: 7 }
     const r = validateDiscardPickup(
-      makeState({ discardPile: [topCard], lastDiscardedCardIds: ['own-card'] }),
+      makeState({ discardPile: [topCard], lastDiscardedCardIds: ['prev-turn-card'] }),
       'player1'
     )
-    expect(r.valid).toBe(false)
-    if (!r.valid) expect(r.code).toBe('CANNOT_PICKUP_OWN_DISCARD')
+    expect(r.valid).toBe(true)
   })
 })
 
@@ -147,27 +148,31 @@ describe('validateUnyamoNotYetDeclared', () => {
 })
 
 describe('validateDiscardPhase', () => {
-  it('valid when player has not discarded yet', () => {
-    expect(validateDiscardPhase(makePlayer({ hasDiscardedThisTurn: false })).valid).toBe(true)
+  it('invalid when player has not drawn yet (must draw first)', () => {
+    // 仕様 2.6節: DRAW→DISCARD順序。引く前には捨てられない。
+    const r = validateDiscardPhase(makePlayer({ hasDrawnThisTurn: false, hasDiscardedThisTurn: false }))
+    expect(r.valid).toBe(false)
+    if (!r.valid) expect(r.code).toBe('MUST_DRAW_FIRST')
+  })
+  it('valid when player has drawn but not discarded yet', () => {
+    // 仕様 2.6節: DRAW完了後にDISCARD可能。
+    expect(validateDiscardPhase(makePlayer({ hasDrawnThisTurn: true, hasDiscardedThisTurn: false })).valid).toBe(true)
   })
   it('invalid when player has already discarded', () => {
-    const r = validateDiscardPhase(makePlayer({ hasDiscardedThisTurn: true }))
+    const r = validateDiscardPhase(makePlayer({ hasDrawnThisTurn: true, hasDiscardedThisTurn: true }))
     expect(r.valid).toBe(false)
     if (!r.valid) expect(r.code).toBe('ALREADY_DISCARDED')
   })
 })
 
 describe('validateDrawPhase', () => {
-  it('invalid when player has not discarded yet (must discard first)', () => {
-    const r = validateDrawPhase(makePlayer({ hasDiscardedThisTurn: false, hasDrawnThisTurn: false }))
-    expect(r.valid).toBe(false)
-    if (!r.valid) expect(r.code).toBe('MUST_DISCARD_FIRST')
-  })
-  it('valid when player has discarded but not drawn', () => {
-    expect(validateDrawPhase(makePlayer({ hasDiscardedThisTurn: true, hasDrawnThisTurn: false })).valid).toBe(true)
+  it('valid when player has not drawn yet (ターン開始時)', () => {
+    // 仕様 2.6節: DRAW→DISCARD順序。ターン開始時に引ける。
+    const r = validateDrawPhase(makePlayer({ hasDrawnThisTurn: false }))
+    expect(r.valid).toBe(true)
   })
   it('invalid when player has already drawn', () => {
-    const r = validateDrawPhase(makePlayer({ hasDiscardedThisTurn: true, hasDrawnThisTurn: true }))
+    const r = validateDrawPhase(makePlayer({ hasDrawnThisTurn: true }))
     expect(r.valid).toBe(false)
     if (!r.valid) expect(r.code).toBe('ALREADY_DREW')
   })

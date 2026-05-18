@@ -56,6 +56,8 @@ export function validateNoDuplicateAction(
   player: PlayerState,
   actionType: 'normal' | 'special'
 ): ValidationResult {
+  // 仕様 2.6節: DRAW→DISCARD順序。DISCARDは DRAW完了後にのみ可能。
+  // すでにDISCARDを完了済みなら再度捨てられない。
   if (player.hasDiscardedThisTurn) {
     return { valid: false, code: 'ALREADY_ACTED', message: 'Already performed an action this turn' }
   }
@@ -67,18 +69,11 @@ export function validateNoDuplicateAction(
 
 /**
  * DRAW_PHASE（引くフェーズ）の検証。
- * 仕様 2.6節: ターンは「ACTION_PHASE（捨てる）→ DRAW_PHASE（引く/拾う）→ TURN_END」。
- * - 先に手札を捨てている（hasDiscardedThisTurn=true）必要がある。
+ * 仕様 2.6節: ターンは「DRAW_PHASE（引く/拾う）→ DISCARD_PHASE（捨てる）→ TURN_END」。
+ * - まだ引いていない（hasDrawnThisTurn=false）ことが条件。ターン開始時にのみ引ける。
  * - すでに引き終わっている場合は再度引けない。
  */
 export function validateDrawPhase(player: PlayerState): ValidationResult {
-  if (!player.hasDiscardedThisTurn) {
-    return {
-      valid: false,
-      code: 'MUST_DISCARD_FIRST',
-      message: 'You must discard before drawing',
-    }
-  }
   if (player.hasDrawnThisTurn) {
     return {
       valid: false,
@@ -90,10 +85,19 @@ export function validateDrawPhase(player: PlayerState): ValidationResult {
 }
 
 /**
- * DISCARD_PHASE（捨てるフェーズ = ACTION_PHASE）の検証。
- * 仕様 2.6節: ターン開始時の最初のフェーズ。まだ捨てていないことが条件。
+ * DISCARD_PHASE（捨てるフェーズ）の検証。
+ * 仕様 2.6節: DRAW完了後にDISCARDフェーズに移行する。
+ * - 先に引いている（hasDrawnThisTurn=true）必要がある。
+ * - まだ捨てていない（hasDiscardedThisTurn=false）ことが条件。
  */
 export function validateDiscardPhase(player: PlayerState): ValidationResult {
+  if (!player.hasDrawnThisTurn) {
+    return {
+      valid: false,
+      code: 'MUST_DRAW_FIRST',
+      message: 'You must draw before discarding',
+    }
+  }
   if (player.hasDiscardedThisTurn) {
     return {
       valid: false,
@@ -120,9 +124,9 @@ export function validateDrawSource(
 /**
  * 捨て札の一番上から拾えるかを検証する。
  * 仕様 2.3節: 「山札または捨て札の一番上から1枚引く」のみ。
- * ただし: ACTION_PHASE→DRAW_PHASEの順序のため、
- * 「自分が今ACTION_PHASEで捨てたカードを直後に拾い直す」は禁止する。
- * （state.lastDiscardedCardIds に含まれるIDは現ターンプレイヤー自身が捨てたカード）
+ * DRAW→DISCARD順序のため、捨札拾いはターン開始時（まだ引いていない状態）に行う。
+ * 自分が今捨てたカードを同ターンで拾う状況はDRAW→DISCARD順序では発生しないため、
+ * lastDiscardedCardIds によるチェックは不要。捨て札が空でないかのみ検証する。
  */
 export function validateDiscardPickup(
   state: GameState,
@@ -130,14 +134,6 @@ export function validateDiscardPickup(
 ): ValidationResult {
   if (state.discardPile.length === 0) {
     return { valid: false, code: 'DISCARD_EMPTY', message: 'Discard pile is empty' }
-  }
-  const top = state.discardPile[state.discardPile.length - 1]
-  if (top && state.lastDiscardedCardIds.includes(top.id)) {
-    return {
-      valid: false,
-      code: 'CANNOT_PICKUP_OWN_DISCARD',
-      message: 'You cannot pick up the card you just discarded',
-    }
   }
   return { valid: true }
 }

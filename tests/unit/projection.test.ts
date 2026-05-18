@@ -47,14 +47,14 @@ describe('projectStateForPlayer', () => {
     expect(projected.discardPileTop?.rank).toBe(3)
   })
 
-  it('canPickupFromDiscard is true when I have discarded but not drawn (DRAW_PHASE) and top is not my own', () => {
-    // 仕様 2.6節: ACTION_PHASE→DRAW_PHASE。DISCARD完了後、自分以外の捨て札なら拾える。
+  it('canPickupFromDiscard is true when I have not drawn yet (DRAW_PHASE) and discard pile has a card', () => {
+    // 仕様 2.6節: DRAW→DISCARD順序。DRAW_PHASE（まだ引いていない状態）で捨て札から拾える。
     const topCard: Card = { id: 'others-top', suit: 'hearts', rank: 7 }
-    const me = { ...makePlayer('me', []), hasDiscardedThisTurn: true, hasDrawnThisTurn: false }
+    const me = { ...makePlayer('me', []), hasDrawnThisTurn: false, hasDiscardedThisTurn: false }
     const state: GameState = {
       ...makeState([me, makePlayer('other', [])]),
       discardPile: [topCard],
-      lastDiscardedCardIds: [], // 今ターンで自分はまだ何も捨てていない or 別カードを捨てた前提
+      lastDiscardedCardIds: [],
     }
     const projected = projectStateForPlayer(state, 'me')
     expect(projected.canPickupFromDiscard).toBe(true)
@@ -62,7 +62,7 @@ describe('projectStateForPlayer', () => {
 
   it('canPickupFromDiscard is false when discard pile is empty', () => {
     const state: GameState = {
-      ...makeState([{ ...makePlayer('me', []), hasDiscardedThisTurn: true }]),
+      ...makeState([makePlayer('me', [])]),
       discardPile: [],
     }
     const projected = projectStateForPlayer(state, 'me')
@@ -80,36 +80,13 @@ describe('projectStateForPlayer', () => {
     expect(projected.canPickupFromDiscard).toBe(false)
   })
 
-  it('canPickupFromDiscard is false when I have not discarded yet (still in ACTION_PHASE)', () => {
+  it('canPickupFromDiscard is false when already drew this turn (DISCARD_PHASE)', () => {
+    // 仕様 2.6節: DRAW完了後はDISCARD_PHASE。捨て札から拾う機会はDRAW_PHASEのみ。
     const topCard: Card = { id: 'top', suit: 'hearts', rank: 7 }
-    const me = { ...makePlayer('me', []), hasDiscardedThisTurn: false }
+    const me = { ...makePlayer('me', []), hasDrawnThisTurn: true, hasDiscardedThisTurn: false }
     const state: GameState = {
       ...makeState([me, makePlayer('other', [])]),
       discardPile: [topCard],
-    }
-    const projected = projectStateForPlayer(state, 'me')
-    expect(projected.canPickupFromDiscard).toBe(false)
-  })
-
-  it('canPickupFromDiscard is false when already drew this turn', () => {
-    const topCard: Card = { id: 'top', suit: 'hearts', rank: 7 }
-    const me = { ...makePlayer('me', []), hasDiscardedThisTurn: true, hasDrawnThisTurn: true }
-    const state: GameState = {
-      ...makeState([me, makePlayer('other', [])]),
-      discardPile: [topCard],
-    }
-    const projected = projectStateForPlayer(state, 'me')
-    expect(projected.canPickupFromDiscard).toBe(false)
-  })
-
-  it('canPickupFromDiscard is false when top of discard is the card I just discarded', () => {
-    // 仕様: ACTION_PHASE で自分が捨てたばかりのカードは DRAW_PHASE で拾えない
-    const topCard: Card = { id: 'my-card', suit: 'hearts', rank: 7 }
-    const me = { ...makePlayer('me', []), hasDiscardedThisTurn: true, hasDrawnThisTurn: false }
-    const state: GameState = {
-      ...makeState([me, makePlayer('other', [])]),
-      discardPile: [topCard],
-      lastDiscardedCardIds: ['my-card'],
     }
     const projected = projectStateForPlayer(state, 'me')
     expect(projected.canPickupFromDiscard).toBe(false)
@@ -127,38 +104,38 @@ describe('projectStateForPlayer', () => {
     expect(projected.canDeclareUnyamo).toBe(false)
   })
 
-  it('availableActions in ACTION_PHASE: DISCARD/DISCARD_MULTIPLE (no DRAW)', () => {
-    // 仕様 2.6節: ターン開始は ACTION_PHASE。
+  it('availableActions in DRAW_PHASE: DRAW (no DISCARD/DISCARD_MULTIPLE)', () => {
+    // 仕様 2.6節: ターン開始はDRAW_PHASE。まず引く。
     const myHand = [makeCard(7), makeCard(7)]
     const state: GameState = {
       ...makeState([makePlayer('me', myHand), makePlayer('other', [])]),
     }
     const projected = projectStateForPlayer(state, 'me')
-    expect(projected.availableActions).toContain('DISCARD')
-    expect(projected.availableActions).toContain('DISCARD_MULTIPLE')
-    expect(projected.availableActions).not.toContain('DRAW')
+    expect(projected.availableActions).toContain('DRAW')
+    expect(projected.availableActions).not.toContain('DISCARD')
+    expect(projected.availableActions).not.toContain('DISCARD_MULTIPLE')
   })
 
-  it('availableActions in DRAW_PHASE: DRAW only (no DISCARD)', () => {
-    // 仕様 2.6節: DISCARD完了後は DRAW_PHASE。
-    const myHand = [makeCard(7)]
-    const me = { ...makePlayer('me', myHand), hasDiscardedThisTurn: true, hasDrawnThisTurn: false }
+  it('availableActions in DISCARD_PHASE: DISCARD/DISCARD_MULTIPLE only (no DRAW)', () => {
+    // 仕様 2.6節: DRAW完了後はDISCARD_PHASE。捨てる。
+    const myHand = [makeCard(7), makeCard(7)]
+    const me = { ...makePlayer('me', myHand), hasDrawnThisTurn: true, hasDiscardedThisTurn: false }
     const state: GameState = {
       ...makeState([me, makePlayer('other', [])]),
     }
     const projected = projectStateForPlayer(state, 'me')
-    expect(projected.availableActions).toContain('DRAW')
-    expect(projected.availableActions).not.toContain('DISCARD')
-    expect(projected.availableActions).not.toContain('DISCARD_MULTIPLE')
+    expect(projected.availableActions).toContain('DISCARD')
+    expect(projected.availableActions).toContain('DISCARD_MULTIPLE')
+    expect(projected.availableActions).not.toContain('DRAW')
     expect(projected.availableActions).not.toContain('DECLARE_UNYAMO')
   })
 
-  it('DECLARE_UNYAMO available in ACTION_PHASE only (not in DRAW_PHASE)', () => {
-    // ウニャモ宣言はターン開始時のみ可能（DISCARD前）
+  it('DECLARE_UNYAMO available in DRAW_PHASE only (not after drawing)', () => {
+    // ウニャモ宣言はターン開始時（まだ引いていない時）のみ可能
     const myHand = [makeCard(1)] // 1点
-    const meDrawPhase = { ...makePlayer('me', myHand), hasDiscardedThisTurn: true }
+    const meDiscardPhase = { ...makePlayer('me', myHand), hasDrawnThisTurn: true }
     const state: GameState = {
-      ...makeState([meDrawPhase, makePlayer('other', [])]),
+      ...makeState([meDiscardPhase, makePlayer('other', [])]),
     }
     const projected = projectStateForPlayer(state, 'me')
     expect(projected.availableActions).not.toContain('DECLARE_UNYAMO')

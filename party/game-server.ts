@@ -24,6 +24,19 @@ function send(conn: Party.Connection, msg: ServerMessage): void {
   conn.send(JSON.stringify(msg))
 }
 
+/**
+ * Alarm ストレージキー: 次に手番が来るCPU 1人分を永続化する。
+ * PartyKit/Durable Objects の Alarm API を使い、ハイバネーション後も確実に発火させる。
+ * Alarmは同時に1個のみ＝常に「次の1CPUターン」専用。onAlarmでそのCPUの
+ * 1ターン(宣言 or DRAW→DISCARD→進行)を丸ごと完走し、続きは末尾で1個だけ再予約する。
+ */
+const CPU_ALARM_KEY = 'cpu_alarm_step'
+
+// Durable Objects は Alarm を同時に1つしか持てない。
+// そのため「次に手番が来るCPU 1人分のターン」だけを指す単一マーカーにする。
+// 多段(DRAW/DISCARD/ADVANCE)Alarm はスロット競合で消失するため廃止。
+type CpuAlarmStep = { cpuId: string }
+
 export default class GameServer implements Party.Server {
   gameState: GameState | null = null
   connections = new Map<string, { userId: string; name: string }>()
@@ -35,7 +48,8 @@ export default class GameServer implements Party.Server {
   // CPU対戦用フィールド
   cpuPlayerIds = new Set<string>()
   cpuDifficulty: CpuDifficulty = 'EASY'
-  cpuActionTimer: ReturnType<typeof setTimeout> | null = null
+  // cpuActionTimer は Alarm ベースに移行したため廃止。
+  // 旧 setTimeout ベースの変数は残さない（競合防止）。
 
   constructor(readonly room: Party.Room) {}
 
@@ -44,15 +58,6 @@ export default class GameServer implements Party.Server {
   }
 
   async onMessage(message: string, sender: Party.Connection) {
-    // レート制限: 1秒1回（CPUプレイヤーはレート制限対象外）
-    const now = Date.now()
-    const last = this.lastMessageAt.get(sender.id) ?? 0
-    if (now - last < 1000) {
-      send(sender, { type: 'ERROR', payload: { code: 'RATE_LIMITED', message: 'Too many messages' } })
-      return
-    }
-    this.lastMessageAt.set(sender.id, now)
-
     const parsed = clientMessageSchema.safeParse(JSON.parse(message))
     if (!parsed.success) {
       send(sender, { type: 'ERROR', payload: { code: 'INVALID_MESSAGE', message: 'Invalid message format' } })
@@ -60,6 +65,22 @@ export default class GameServer implements Party.Server {
     }
 
     const msg = parsed.data
+
+    // レート制限: ゲーム操作系のみ1秒1回（連打防止）。
+    // JOIN/START系/RECONNECT/RESTART等のライフサイクル系は対象外
+    // （JOIN直後にSTART_CPU_GAMEを送る等の正当な連続送信をブロックしないため）。
+    const RATE_LIMITED_TYPES = new Set([
+      'DISCARD', 'DISCARD_MULTIPLE', 'DRAW', 'DECLARE_UNYAMO',
+    ])
+    if (RATE_LIMITED_TYPES.has(msg.type)) {
+      const now = Date.now()
+      const last = this.lastMessageAt.get(sender.id) ?? 0
+      if (now - last < 1000) {
+        send(sender, { type: 'ERROR', payload: { code: 'RATE_LIMITED', message: 'Too many messages' } })
+        return
+      }
+      this.lastMessageAt.set(sender.id, now)
+    }
     switch (msg.type) {
       case 'JOIN': return this.handleJoin(sender, msg.payload.token)
       case 'START_GAME': return this.handleStartGame(sender)
@@ -215,7 +236,7 @@ export default class GameServer implements Party.Server {
     this.scheduleTurnTimeout()
   }
 
-  private handleStartCpuGame(
+  private async handleStartCpuGame(
     conn: Party.Connection,
     payload: { cpuCount: number; difficulty: 'EASY' | 'HARD' }
   ) {
@@ -283,87 +304,108 @@ export default class GameServer implements Party.Server {
     if (!this.cpuPlayerIds.has(getCurrentPlayerId(this.gameState))) {
       this.scheduleTurnTimeout()
     }
-    this.scheduleCpuActionIfNeeded()
+    await this.scheduleCpuActionIfNeeded()
   }
 
   /**
-   * 現在ターンプレイヤーがCPUであれば、遅延後にCPUターンを実行する。
+   * 現在ターンプレイヤーがCPUであれば、Alarm を使って遅延後にCPUターンを実行する。
+   *
+   * PartyKit/Durable Objects の Alarm API を使用することで、ハイバネーション/エビクション後も
+   * タイマーが確実に発火する。素の setTimeout はメッセージハンドラ完了後に途切れ得るため使用しない。
+   * UX用遅延 (800-1499ms) は維持する。
    */
-  private scheduleCpuActionIfNeeded() {
+  private async scheduleCpuActionIfNeeded() {
     if (!this.gameState) return
     const currentId = getCurrentPlayerId(this.gameState)
-    if (!this.cpuPlayerIds.has(currentId)) return
 
-    // 既存タイマーをクリア
-    if (this.cpuActionTimer) {
-      clearTimeout(this.cpuActionTimer)
-      this.cpuActionTimer = null
+    // 手番がCPUでない（人間 or 不在）なら、残っているCPU Alarmを必ず消す。
+    // （前ターンの取り残しAlarmがあとでCPUターンを誤発火しないように）
+    if (!this.cpuPlayerIds.has(currentId)) {
+      await this.room.storage.delete(CPU_ALARM_KEY)
+      await this.room.storage.deleteAlarm()
+      return
     }
 
-    const delay = 800 + Math.floor(Math.random() * 700) // 800〜1499ms
-    this.cpuActionTimer = setTimeout(() => {
-      this.cpuActionTimer = null
-      this.executeCpuTurn(currentId)
-    }, delay)
+    // 次に手番のCPU 1人分のターンを、単一Alarmで予約（UX遅延 800〜1499ms）。
+    // Alarmは常にこの「次の1CPUターン」専用の1個だけ。
+    await this.scheduleCpuAlarm({ cpuId: currentId }, 800 + Math.floor(Math.random() * 700))
   }
 
   /**
-   * CPUのターンを自動実行する。
-   * 仕様 2.6節: ターン順序は ACTION_PHASE（DISCARD or ウニャモ宣言）→ DRAW_PHASE。
+   * Alarm ストレージに対象CPUを保存し、Alarm を設定する。
+   * Durable Objects は Alarm を1つしか持てないため、常に上書きする。
+   * put→setAlarm の順で、これがハンドラ末尾の最後の副作用になるよう呼ぶこと。
    */
-  private executeCpuTurn(cpuId: string) {
+  private async scheduleCpuAlarm(alarmStep: CpuAlarmStep, delayMs: number) {
+    await this.room.storage.put(CPU_ALARM_KEY, alarmStep)
+    await this.room.storage.setAlarm(Date.now() + delayMs)
+  }
+
+  /**
+   * Alarm 発火時のハンドラ。
+   * 対象CPUの「1ターン丸ごと」(必要なら宣言→ or →DRAW→DISCARD→ターン進行)を
+   * 同一呼び出し内で同期的に完走する。続きが必要なら advanceAfterDiscard /
+   * performDeclareUnyamo 末尾の scheduleCpuActionIfNeeded が次の単一Alarmを張る。
+   */
+  async onAlarm() {
+    const alarmStep = await this.room.storage.get<CpuAlarmStep>(CPU_ALARM_KEY)
+    await this.room.storage.delete(CPU_ALARM_KEY)
+    if (!alarmStep || !this.gameState) return
+
+    const { cpuId } = alarmStep
+    // 予約時と手番がズレていたら（再接続/タイムアウト等）安全に無視。
+    if (getCurrentPlayerId(this.gameState) !== cpuId) return
+    if (!this.cpuPlayerIds.has(cpuId)) return
+
+    await this.executeCpuFullTurn(cpuId)
+  }
+
+  /**
+   * CPUの1ターンを丸ごと実行する（Alarmから1ホップで呼ばれる）。
+   * - 宣言条件成立かつ未宣言なら performDeclareUnyamo（その中で次Alある）
+   * - そうでなければ DRAW → broadcast → DISCARD → advanceAfterDiscard
+   * いずれの経路も末尾で scheduleCpuActionIfNeeded が呼ばれ、
+   * 次がCPUなら次の単一Alarmが1つだけ張られる（多段Alarm競合を排除）。
+   */
+  private async executeCpuFullTurn(cpuId: string) {
     if (!this.gameState) return
     const player = this.gameState.players.find(p => p.id === cpuId)
     if (!player) return
+    if (player.hasDrawnThisTurn) return
 
-    // ACTION_PHASE: ウニャモ宣言 or DISCARD
-    if (!player.hasDiscardedThisTurn) {
-      // ウニャモ宣言チェック（ターン開始時のみ可能。すでに誰かが宣言済みなら不可）
-      if (this.gameState.unyamoDeclarerId === null) {
-        const shouldDeclare = decideUnyamoDeclaration(player.hand, this.cpuDifficulty)
-        if (shouldDeclare) {
-          this.performDeclareUnyamo(cpuId)
-          this.scheduleCpuActionIfNeeded()
-          return
-        }
+    // ウニャモ宣言（ターン開始時のみ・未宣言時のみ）
+    if (this.gameState.unyamoDeclarerId === null) {
+      const shouldDeclare = decideUnyamoDeclaration(player.hand, this.cpuDifficulty)
+      if (shouldDeclare) {
+        await this.performDeclareUnyamo(cpuId)
+        return
       }
-
-      // DISCARD: 1枚または特殊操作で2-3枚
-      const cardIds = decideDiscard(player.hand, this.cpuDifficulty)
-      if (cardIds.length === 0) return
-      this.performDiscard(cpuId, cardIds)
-      // performDiscard は advance せずに DRAW を待つ
     }
 
-    // DRAW_PHASE（500ms後）
-    this.cpuActionTimer = setTimeout(() => {
-      this.cpuActionTimer = null
-      if (!this.gameState) return
-      const updatedPlayer = this.gameState.players.find(p => p.id === cpuId)
-      if (!updatedPlayer || !updatedPlayer.hasDiscardedThisTurn) return
-      if (updatedPlayer.hasDrawnThisTurn) return
+    // DRAW: 山札 or 捨て札から1枚引く
+    const discardTop = this.gameState.discardPile[this.gameState.discardPile.length - 1] ?? null
+    const canPickupFromDiscard = !!discardTop
+    const source = decideDrawSource(player.hand, discardTop, canPickupFromDiscard, this.cpuDifficulty)
+    this.performDraw(cpuId, source)
+    // 引いた状態を一旦反映（UX: 引く→捨てるの流れが見える）
+    this.broadcastGameState()
 
-      // 仕様 2.3節: 捨て札の一番上から1枚引く（ただし自分が今捨てたものは拾えない）
-      const discardTop = this.gameState.discardPile[this.gameState.discardPile.length - 1] ?? null
-      const isOwnLastDiscard =
-        !!discardTop && this.gameState.lastDiscardedCardIds.includes(discardTop.id)
-      const canPickupFromDiscard = !!discardTop && !isOwnLastDiscard
+    // DISCARD: 引いた直後の手札から1枚（特殊操作で2-3枚）捨てる
+    const after = this.gameState.players.find(p => p.id === cpuId)
+    if (!after || !after.hasDrawnThisTurn || after.hasDiscardedThisTurn) return
+    const cardIds = decideDiscard(after.hand, this.cpuDifficulty)
+    if (cardIds.length === 0) return
+    this.performDiscard(cpuId, cardIds)
 
-      const source = decideDrawSource(
-        updatedPlayer.hand,
-        discardTop,
-        canPickupFromDiscard,
-        this.cpuDifficulty
-      )
-      this.performDraw(cpuId, source)
-      // DRAW完了 → ターン進行（advanceAfterDraw 内で scheduleCpuActionIfNeeded を実行）
-      this.advanceAfterDraw(cpuId)
-    }, 500)
+    // ターン進行（内部で isRoundComplete→finalize、でなければ次手番へ。
+    // 末尾の scheduleCpuActionIfNeeded が次CPUの単一Alarmを張る）
+    await this.advanceAfterDiscard(cpuId)
   }
 
   /**
    * DRAWの内部処理（CPU・人間共通）
-   * 仕様 2.6節: ターンの後半フェーズ。DISCARDの後に呼ばれる。
+   * 仕様 2.6節: ターンの最初のフェーズ。ターン開始時に引く。
+   * 完了後はDISCARD_PHASEに移行する（ターンは進めない）。
    */
   private performDraw(playerId: string, source: 'deck' | 'discard') {
     if (!this.gameState) return
@@ -408,10 +450,10 @@ export default class GameServer implements Party.Server {
 
   /**
    * DISCARDの内部処理（CPU・人間共通）
-   * 仕様 2.6節: ACTION_PHASE。ターンの最初のフェーズ。
+   * 仕様 2.6節: DISCARD_PHASE。DRAWの後に呼ばれる。
    * cardIds.length === 1: 通常捨て
    * cardIds.length >= 2: 特殊操作（DISCARD_MULTIPLE）
-   * 完了後はDRAW_PHASEに移行する（ターンは進めない）。
+   * このメソッド自体はターンを進めない（advanceAfterDiscardを別途呼ぶこと）。
    */
   private performDiscard(playerId: string, cardIds: string[]) {
     if (!this.gameState) return
@@ -475,7 +517,7 @@ export default class GameServer implements Party.Server {
   /**
    * ウニャモ宣言の内部処理（CPU・人間共通）
    */
-  private performDeclareUnyamo(playerId: string) {
+  private async performDeclareUnyamo(playerId: string) {
     if (!this.gameState) return
     const player = this.gameState.players.find(p => p.id === playerId)
     if (!player) return
@@ -489,6 +531,10 @@ export default class GameServer implements Party.Server {
     for (const r of checks) {
       if (!r.valid) return
     }
+
+    // 人間ターンで張った30秒タイマーを必ず解除する（残存すると後で誤発火する）。
+    // cancelTurnTimeout は冪等なので CPU 宣言時も安全に呼べる。
+    this.cancelTurnTimeout()
 
     const remainingPlayers = this.gameState.turnOrder.filter(id => id !== playerId)
     this.gameState = {
@@ -510,7 +556,7 @@ export default class GameServer implements Party.Server {
     if (!this.cpuPlayerIds.has(getCurrentPlayerId(this.gameState))) {
       this.scheduleTurnTimeout()
     }
-    this.scheduleCpuActionIfNeeded()
+    await this.scheduleCpuActionIfNeeded()
   }
 
   private handleDiscard(conn: Party.Connection, cardId: string) {
@@ -547,8 +593,8 @@ export default class GameServer implements Party.Server {
     }
     send(conn, { type: 'ACTION_RESULT', payload: { success: true, action: 'DISCARD', playerId: info.userId } })
 
-    // 仕様 2.6節: DISCARDの後はDRAW_PHASE。ターンはまだ進めない。
-    this.broadcastGameState()
+    // 仕様 2.6節: DISCARD完了 → ターン終了して次のプレイヤーへ。
+    this.advanceAfterDiscard(info.userId)
   }
 
   private handleDiscardMultiple(conn: Party.Connection, cardIds: string[]) {
@@ -586,8 +632,8 @@ export default class GameServer implements Party.Server {
     }
     send(conn, { type: 'ACTION_RESULT', payload: { success: true, action: 'DISCARD_MULTIPLE', playerId: info.userId } })
 
-    // 仕様 2.6節: DISCARDの後はDRAW_PHASE。ターンはまだ進めない。
-    this.broadcastGameState()
+    // 仕様 2.6節: DISCARD完了 → ターン終了して次のプレイヤーへ。
+    this.advanceAfterDiscard(info.userId)
   }
 
   private handleDraw(conn: Party.Connection, source: 'deck' | 'discard') {
@@ -635,15 +681,15 @@ export default class GameServer implements Party.Server {
 
     send(conn, { type: 'ACTION_RESULT', payload: { success: true, action: 'DRAW', playerId: info.userId } })
 
-    // 仕様 2.6節: DRAW完了 → ターン終了して次のプレイヤーへ。
-    this.advanceAfterDraw(info.userId)
+    // 仕様 2.6節: DRAW完了 → DISCARD_PHASEに移行。ターンはまだ進めない。
+    this.broadcastGameState()
   }
 
   /**
-   * DRAW完了後にターンを進める共通処理。
-   * 仕様 2.6節: ACTION_PHASE → DRAW_PHASE → TURN_END
+   * DISCARD完了後にターンを進める共通処理。
+   * 仕様 2.6節: DRAW_PHASE → DISCARD_PHASE → TURN_END
    */
-  private advanceAfterDraw(actorId: string) {
+  private async advanceAfterDiscard(actorId: string) {
     if (!this.gameState) return
     this.cancelTurnTimeout()
 
@@ -667,10 +713,10 @@ export default class GameServer implements Party.Server {
     if (!this.cpuPlayerIds.has(getCurrentPlayerId(this.gameState))) {
       this.scheduleTurnTimeout()
     }
-    this.scheduleCpuActionIfNeeded()
+    await this.scheduleCpuActionIfNeeded()
   }
 
-  private handleDeclareUnyamo(conn: Party.Connection) {
+  private async handleDeclareUnyamo(conn: Party.Connection) {
     const info = this.connections.get(conn.id)
     if (!info || !this.gameState) return
 
@@ -689,6 +735,10 @@ export default class GameServer implements Party.Server {
         return
       }
     }
+
+    // 人間ターンで張った30秒タイマーを必ず解除する（残存すると後で誤発火する）。
+    // cancelTurnTimeout は冪等なので二重呼び出し安全。
+    this.cancelTurnTimeout()
 
     const remainingPlayers = this.gameState.turnOrder.filter(id => id !== info.userId)
     this.gameState = {
@@ -710,7 +760,7 @@ export default class GameServer implements Party.Server {
     if (!this.cpuPlayerIds.has(getCurrentPlayerId(this.gameState))) {
       this.scheduleTurnTimeout()
     }
-    this.scheduleCpuActionIfNeeded()
+    await this.scheduleCpuActionIfNeeded()
   }
 
   private async handleReconnect(conn: Party.Connection, token: string) {
@@ -722,7 +772,7 @@ export default class GameServer implements Party.Server {
    * ルームを WAITING にリセットし、CPU プレイヤーは取り除く。
    * その後、待機画面で人間プレイヤーがそれぞれ START_GAME / START_CPU_GAME を送れる状態にする。
    */
-  private handleRestartGame(conn: Party.Connection) {
+  private async handleRestartGame(conn: Party.Connection) {
     const info = this.connections.get(conn.id)
     if (!info || !this.gameState) return
     if (info.userId !== this.gameState.hostId) {
@@ -735,10 +785,10 @@ export default class GameServer implements Party.Server {
     }
 
     this.cancelTurnTimeout()
-    if (this.cpuActionTimer) {
-      clearTimeout(this.cpuActionTimer)
-      this.cpuActionTimer = null
-    }
+    // Alarm ベースに移行したため cpuActionTimer の setTimeout クリアは不要。
+    // 既存の CPU Alarm を削除してリセット状態にする。
+    await this.room.storage.delete(CPU_ALARM_KEY)
+    await this.room.storage.deleteAlarm()
 
     // CPUプレイヤーを除去（人間のみ残す）
     const humanPlayers = this.gameState.players
@@ -836,14 +886,38 @@ export default class GameServer implements Party.Server {
       const player = this.gameState.players.find(p => p.id === currentPlayerId)
       if (!player) return
 
-      // 仕様 6.4節: 自動操作 = 手札の最大点カードを1枚捨てる → 山札から1枚引く。
-      // 仕様 2.6節の順序に従い、まずDISCARDを実施してからDRAW。
-      if (!player.hasDiscardedThisTurn && player.hand.length > 0) {
-        const maxCard = player.hand.reduce((max, c) => {
+      // 仕様 6.4節: 自動操作 = 山札から1枚引く → 手札の最大点カードを1枚捨てる。
+      // 仕様 2.6節の順序に従い、まずDRAWを実施してからDISCARD。
+      if (!player.hasDrawnThisTurn) {
+        const { card, remainingDeck } = drawFromDeck(this.gameState.deck)
+        if (card) {
+          this.gameState = {
+            ...this.gameState,
+            deck: remainingDeck,
+            players: this.gameState.players.map(p =>
+              p.id === currentPlayerId
+                ? { ...p, hand: [...p.hand, card], hasDrawnThisTurn: true }
+                : p
+            ),
+          }
+        } else {
+          // 山札が空の場合は hasDrawnThisTurn だけ立てる
+          this.gameState = {
+            ...this.gameState,
+            players: this.gameState.players.map(p =>
+              p.id === currentPlayerId ? { ...p, hasDrawnThisTurn: true } : p
+            ),
+          }
+        }
+      }
+
+      const afterDraw = this.gameState.players.find(p => p.id === currentPlayerId)
+      if (afterDraw && !afterDraw.hasDiscardedThisTurn && afterDraw.hand.length > 0) {
+        const maxCard = afterDraw.hand.reduce((max, c) => {
           const score = c.suit === 'joker' ? 0 : c.rank
           const maxScore = max.suit === 'joker' ? 0 : max.rank
           return score > maxScore ? c : max
-        }, player.hand[0]!)
+        }, afterDraw.hand[0]!)
         this.gameState = {
           ...this.gameState,
           discardPile: [...this.gameState.discardPile, maxCard],
@@ -856,23 +930,7 @@ export default class GameServer implements Party.Server {
         }
       }
 
-      const afterDiscard = this.gameState.players.find(p => p.id === currentPlayerId)
-      if (afterDiscard && !afterDiscard.hasDrawnThisTurn) {
-        const { card, remainingDeck } = drawFromDeck(this.gameState.deck)
-        if (card) {
-          this.gameState = {
-            ...this.gameState,
-            deck: remainingDeck,
-            players: this.gameState.players.map(p =>
-              p.id === currentPlayerId
-                ? { ...p, hand: [...p.hand, card], hasDrawnThisTurn: true }
-                : p
-            ),
-          }
-        }
-      }
-
-      this.advanceAfterDraw(currentPlayerId)
+      this.advanceAfterDiscard(currentPlayerId)
     }, TURN_TIMEOUT_MS)
   }
 

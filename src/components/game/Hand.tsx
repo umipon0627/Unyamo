@@ -29,7 +29,7 @@ export function Hand({ cards, selectedIndices = [], onSelect, faceDown = false, 
           <motion.div
             key={card.id}
             className="absolute"
-            style={{ transformOrigin: 'bottom center', zIndex: i }}
+            style={{ transformOrigin: 'bottom center', zIndex: isSelected ? 100 : i + 1 }}
             animate={{
               rotate: angle,
               x: xOffset,
