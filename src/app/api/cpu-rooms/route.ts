@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { getCurrentUser } from '@/lib/current-user'
 
 const schema = z.object({
-  cpuCount: z.number().int().min(1).max(3),
+  cpuCount: z.number().int().min(1).max(4),
   difficulty: z.enum(['EASY', 'HARD']),
 })
 

@@ -255,22 +255,6 @@ export function GameBoard({ roomId, myPlayerId, token, roomName: roomNameProp }:
 
       {/* ===== 中央エリア: 山札 + 捨て札 ===== */}
       <div className="flex-1 flex items-center justify-center gap-8 px-4 min-h-0">
-        {/* デスクトップ: 左側の追加プレイヤー（3人以上） */}
-        {others.length > 2 && (
-          <div className="hidden md:flex flex-col gap-2">
-            {others.slice(2).map(p => (
-              <PlayerArea
-                key={p.id}
-                player={{ ...p, cardCount: p.cardCount, image: undefined }}
-                isCurrentTurn={p.id === currentPlayerId}
-                hasDeclaredUnyamo={p.id === unyamoDeclarerId}
-                position="left"
-                compact
-              />
-            ))}
-          </div>
-        )}
-
         {/* 山札 + 捨て札 */}
         <div className="flex items-center justify-center gap-6">
           <Deck

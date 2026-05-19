@@ -76,7 +76,7 @@ export function ResultModal({ open, results, myPlayerId, isHost, onPlayAgain, on
   return (
     <Dialog open={open}>
       <DialogContent
-        className="relative overflow-hidden border-[#e7ddc8] max-w-sm w-full bg-[#fffefa] rounded-[20px] p-0"
+        className="relative overflow-y-auto overflow-x-hidden border-[#e7ddc8] max-w-sm w-full bg-[#fffefa] rounded-[20px] p-0 max-h-[calc(100dvh-2rem)]"
       >
         <Confetti />
 
@@ -163,7 +163,7 @@ export function ResultModal({ open, results, myPlayerId, isHost, onPlayAgain, on
         </div>
 
         {/* フッタボタン */}
-        <div className="relative z-10 flex gap-2 px-4 pb-5">
+        <div className="relative z-10 flex gap-2 px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
           <button
             className="flex-1 py-3 rounded-full border-2 border-[#e7ddc8] text-[#7a6a52] font-heading font-bold text-sm
               hover:bg-[#f0e9d8] transition-colors"

@@ -43,7 +43,7 @@ export function CpuSetup() {
   }
 
   // CPU対戦相手プレビュー
-  const cpuNames = ['NyaBot α', 'NyaBot β', 'NyaBot γ']
+  const cpuNames = ['NyaBot α', 'NyaBot β', 'NyaBot γ', 'NyaBot δ']
 
   return (
     <div className="flex flex-col min-h-screen bg-unyamo-cream">
@@ -69,7 +69,7 @@ export function CpuSetup() {
                 <span className="ml-2 text-xs font-bold text-unyamo-ink-muted">（CPUの数を選んでください）</span>
               </label>
               <div className="flex gap-2">
-                {([1, 2, 3] as const).map((count) => (
+                {([1, 2, 3, 4] as const).map((count) => (
                   <button
                     key={count}
                     type="button"
