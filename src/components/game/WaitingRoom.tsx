@@ -98,8 +98,11 @@ export function WaitingRoom({
               {roomName}
             </h1>
             <div className="flex items-center gap-2 mt-1 flex-wrap">
-              <span className="text-unyamo-ink-muted text-xs font-mono">
-                ID: {roomId}
+              <span
+                className="text-unyamo-ink-muted text-xs font-mono"
+                title={roomId}
+              >
+                ID: {roomId.length > 12 ? `${roomId.slice(0, 8)}…` : roomId}
               </span>
               <button
                 type="button"

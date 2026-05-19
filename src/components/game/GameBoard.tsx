@@ -20,12 +20,13 @@ interface GameBoardProps {
   roomId: string
   myPlayerId: string
   token: string
+  roomName?: string
 }
 
-export function GameBoard({ roomId, myPlayerId, token }: GameBoardProps) {
+export function GameBoard({ roomId, myPlayerId, token, roomName: roomNameProp }: GameBoardProps) {
   const router = useRouter()
-  const { status, send, lastMessage } = useWebSocket(roomId, token)
-  const { gameState, myHand, discardTop, currentPlayerId, phase, isMyTurn, results, unyamoDeclarerId, availableActions, hostId, maxPlayers, roomName, players, canStartGame } = useGameState(lastMessage, myPlayerId)
+  const { gameState, myHand, discardTop, currentPlayerId, phase, isMyTurn, results, unyamoDeclarerId, availableActions, hostId, maxPlayers, roomName, players, canStartGame, handleMessage } = useGameState(myPlayerId)
+  const { status, send } = useWebSocket(roomId, token, handleMessage)
   const { showUnyamoFlash, triggerUnyamoFlash } = useAnimation()
   const [selectedIndices, setSelectedIndices] = useState<number[]>([])
 
@@ -168,7 +169,7 @@ export function GameBoard({ roomId, myPlayerId, token }: GameBoardProps) {
     return (
       <WaitingRoom
         roomId={roomId}
-        roomName={roomName}
+        roomName={roomNameProp ?? roomName}
         players={players}
         hostId={hostId}
         maxPlayers={maxPlayers}

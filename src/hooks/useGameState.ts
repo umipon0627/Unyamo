@@ -1,6 +1,6 @@
 'use client'
 
-import { useReducer, useEffect } from 'react'
+import { useReducer, useCallback } from 'react'
 import type { ServerMessage, ClientGameStatePayload } from '../../party/messages'
 import type { Card } from '@/types/card'
 
@@ -50,23 +50,26 @@ const initialState: LocalGameState = {
   phase: 'WAITING',
 }
 
-export function useGameState(lastMessage: ServerMessage | null, myPlayerId: string) {
+export function useGameState(myPlayerId: string) {
   const [state, dispatch] = useReducer(reducer, initialState)
 
-  useEffect(() => {
-    if (!lastMessage) return
-    switch (lastMessage.type) {
+  // WebSocket から届いた全メッセージをここで処理する。
+  // useReducer の dispatch は React がレンダーをバッチしても
+  // 1件ずつ順に reducer を適用するため、GAME_RESULT の直後に
+  // GAME_STATE が来てもどちらも確実に反映される（取りこぼし防止）。
+  const handleMessage = useCallback((msg: ServerMessage) => {
+    switch (msg.type) {
       case 'GAME_STATE':
-        dispatch({ type: 'GAME_STATE', payload: lastMessage.payload })
+        dispatch({ type: 'GAME_STATE', payload: msg.payload })
         break
       case 'UNYAMO_DECLARED':
-        dispatch({ type: 'UNYAMO_DECLARED', payload: lastMessage.payload })
+        dispatch({ type: 'UNYAMO_DECLARED', payload: msg.payload })
         break
       case 'GAME_RESULT':
-        dispatch({ type: 'GAME_RESULT', payload: lastMessage.payload })
+        dispatch({ type: 'GAME_RESULT', payload: msg.payload })
         break
     }
-  }, [lastMessage])
+  }, [])
 
   const isMyTurn = state.currentPlayerId === myPlayerId
 
@@ -86,5 +89,6 @@ export function useGameState(lastMessage: ServerMessage | null, myPlayerId: stri
     roomName: state.gameState?.roomName ?? '',
     players: state.gameState?.players ?? [],
     canStartGame: state.gameState?.canStartGame ?? false,
+    handleMessage,
   }
 }
