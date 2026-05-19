@@ -6,10 +6,20 @@ import type { ClientMessage, ServerMessage } from '../../party/messages'
 
 export type WSStatus = 'connecting' | 'open' | 'closed' | 'error'
 
-export function useWebSocket(roomId: string, token: string) {
+export function useWebSocket(
+  roomId: string,
+  token: string,
+  onMessage?: (msg: ServerMessage) => void
+) {
   const [status, setStatus] = useState<WSStatus>('connecting')
   const [lastMessage, setLastMessage] = useState<ServerMessage | null>(null)
   const socketRef = useRef<PartySocket | null>(null)
+  // onMessage は ref 経由で参照し、コールバックの identity 変化で
+  // ソケットが張り直されない（＝再接続でメッセージ取りこぼし）ようにする。
+  const onMessageRef = useRef(onMessage)
+  useEffect(() => {
+    onMessageRef.current = onMessage
+  }, [onMessage])
 
   useEffect(() => {
     if (!roomId || !token) return
@@ -29,6 +39,10 @@ export function useWebSocket(roomId: string, token: string) {
     socket.addEventListener('message', (event: MessageEvent) => {
       try {
         const data = JSON.parse(event.data as string) as ServerMessage
+        // 全メッセージを即座にコールバックへ渡す（取りこぼし防止）。
+        // setLastMessage は React のバッチで連続メッセージが
+        // 最後の1件に潰れるため、結果通知の唯一の経路にはしない。
+        onMessageRef.current?.(data)
         setLastMessage(data)
       } catch {
         // invalid message, drop
