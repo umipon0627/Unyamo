@@ -18,7 +18,7 @@ export const reconnectSchema = z.object({ type: z.literal('RECONNECT'), payload:
 export const startCpuGameSchema = z.object({
   type: z.literal('START_CPU_GAME'),
   payload: z.object({
-    cpuCount: z.number().int().min(1).max(3),
+    cpuCount: z.number().int().min(1).max(4),
     difficulty: z.enum(['EASY', 'HARD']),
   }),
 })
