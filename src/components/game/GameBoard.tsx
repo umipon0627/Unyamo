@@ -302,6 +302,7 @@ export function GameBoard({ roomId, myPlayerId, token, roomName: roomNameProp }:
               canDrawDiscard={canDrawDiscard}
               selectedCount={activeSelected.length}
               hasUsedSpecial={hasUsedSpecial}
+              handSize={myHand.length}
               onDraw={handleDraw}
               onDiscard={handleDiscard}
               onDiscardMultiple={handleDiscardMultiple}

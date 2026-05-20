@@ -13,6 +13,8 @@ interface ActionPanelProps {
   canDrawDiscard: boolean
   selectedCount: number
   hasUsedSpecial: boolean
+  /** 自分の現在の手札枚数（特殊操作後 0 枚にしない判定用） */
+  handSize: number
   onDraw: (source: 'deck' | 'discard') => void
   onDiscard: () => void
   onDiscardMultiple: () => void
@@ -27,9 +29,12 @@ interface ActionPanelProps {
  */
 export function ActionPanel({
   isMyTurn, canDiscard, isDrawPhase, canDrawDeck, canDrawDiscard,
-  selectedCount, hasUsedSpecial, onDraw, onDiscard, onDiscardMultiple,
+  selectedCount, hasUsedSpecial, handSize, onDraw, onDiscard, onDiscardMultiple,
   disabled = false, discardTop,
 }: ActionPanelProps) {
+  // 特殊操作 (2-3枚捨て) 後に手札 0 枚にならないこと:
+  // 残り枚数 = handSize - selectedCount が 1 以上必要。
+  const wouldEmptyHand = selectedCount >= handSize
   if (!isMyTurn) {
     return (
       <div className="flex items-center justify-center px-4 py-2 text-[#f2eee6]/40 text-sm">
@@ -59,15 +64,25 @@ export function ActionPanel({
         <motion.button
           className="px-5 py-2.5 rounded-full bg-[#c8202b] text-white font-heading font-bold text-sm
             shadow-lg shadow-[#c8202b]/30 hover:bg-[#a81820] disabled:opacity-50 disabled:cursor-not-allowed"
-          whileTap={{ scale: 0.94 }}
-          whileHover={{ scale: 1.03 }}
+          whileTap={!wouldEmptyHand ? { scale: 0.94 } : undefined}
+          whileHover={!wouldEmptyHand ? { scale: 1.03 } : undefined}
           transition={{ type: 'spring', stiffness: 260, damping: 20 }}
           onClick={onDiscardMultiple}
-          disabled={disabled}
-          aria-label={`選択した${selectedCount}枚をまとめて捨てる`}
+          disabled={disabled || wouldEmptyHand}
+          aria-label={
+            wouldEmptyHand
+              ? `${selectedCount}枚捨てると手札が0枚になるため不可`
+              : `選択した${selectedCount}枚をまとめて捨てる`
+          }
+          title={wouldEmptyHand ? '手札が0枚になるため捨てられません' : undefined}
         >
           捨てる（{selectedCount}枚）
         </motion.button>
+      )}
+      {canDiscard && selectedCount >= 2 && !hasUsedSpecial && wouldEmptyHand && (
+        <span className="text-[#e97179] text-xs py-1">
+          手札が0枚になるため、1枚は残してください
+        </span>
       )}
       {canDiscard && selectedCount === 0 && (
         <span className="text-[#f2eee6]/50 text-sm py-1">捨てるカードを選んでください</span>

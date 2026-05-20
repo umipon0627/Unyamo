@@ -1,9 +1,7 @@
 'use client'
 
-import { motion } from 'framer-motion'
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle
-} from '@/components/ui/dialog'
+import { motion, AnimatePresence } from 'framer-motion'
+import { XIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Card } from '@/types/card'
 
@@ -74,39 +72,74 @@ export function ResultModal({ open, results, myPlayerId, isHost, onPlayAgain, on
   const sorted = [...results].sort((a, b) => a.rank - b.rank)
 
   return (
-    <Dialog open={open}>
-      <DialogContent
-        className="relative overflow-y-auto overflow-x-hidden border-[#e7ddc8] max-w-sm w-full bg-[#fffefa] rounded-[20px] p-0 max-h-[calc(100dvh-2rem)]"
-      >
-        <Confetti />
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          // 自前のフルスクリーン flex センタリング。
+          // shadcn の Dialog（fixed top-1/2 -translate-y-1/2）は iOS PWA で
+          // 縦長コンテンツのとき viewport をはみ出して下にずれる事象があったため、
+          // ここで `items-center justify-center` + `max-h` + 内側スクロールに統一する。
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-unyamo-ink/30 supports-backdrop-filter:backdrop-blur-sm"
+          style={{
+            paddingTop: 'max(1rem, env(safe-area-inset-top))',
+            paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
+          }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.12 }}
+        >
+          <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="result-title"
+            className="relative w-full max-w-sm bg-[#fffefa] rounded-[20px] border-2 border-[#e7ddc8] shadow-[0_20px_60px_-12px_rgba(40,30,20,0.28)] flex flex-col max-h-full overflow-hidden"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ type: 'spring', stiffness: 280, damping: 24 }}
+          >
+            <Confetti />
 
-        {/* ヘッダ: Winner表示 */}
-        <DialogHeader className="relative z-10 px-5 pt-5 pb-2 text-center">
-          {winner && (
-            <div className="flex flex-col items-center gap-2 mb-1">
-              <div className={cn(
-                'w-16 h-16 rounded-full border-4 border-[#e5b649] flex items-center justify-center text-2xl font-bold text-white shadow-lg',
-                getAvatarColor(winner.playerName),
-              )}>
-                {winner.playerName[0]?.toUpperCase() ?? '?'}
+            {/* 閉じる(×) */}
+            <button
+              type="button"
+              onClick={onExit}
+              aria-label="閉じる"
+              className="absolute top-3 right-3 z-20 w-8 h-8 rounded-full flex items-center justify-center text-[#7a6a52] hover:text-[#281e14] hover:bg-[#f0e9d8] transition-colors"
+            >
+              <XIcon className="w-4 h-4" />
+            </button>
+
+            {/* スクロール領域 */}
+            <div className="relative z-10 flex flex-col overflow-y-auto">
+              {/* ヘッダ: Winner表示 */}
+              <div className="px-5 pt-5 pb-2 text-center flex-shrink-0">
+                {winner && (
+                  <div className="flex flex-col items-center gap-2 mb-1">
+                    <div className={cn(
+                      'w-16 h-16 rounded-full border-4 border-[#e5b649] flex items-center justify-center text-2xl font-bold text-white shadow-lg',
+                      getAvatarColor(winner.playerName),
+                    )}>
+                      {winner.playerName[0]?.toUpperCase() ?? '?'}
+                    </div>
+                    <h2 id="result-title" className="text-xl font-heading font-bold text-[#c99634]">
+                      Winner — {winner.playerName}
+                    </h2>
+                    {winner.declared && (
+                      <p className="text-sm text-[#7a6a52]">ウニャモ宣言で勝利しました</p>
+                    )}
+                  </div>
+                )}
+                {!winner && (
+                  <h2 id="result-title" className="text-xl font-heading font-bold text-[#281e14]">
+                    ゲーム終了
+                  </h2>
+                )}
               </div>
-              <DialogTitle className="text-xl font-heading font-bold text-[#c99634]">
-                Winner — {winner.playerName}
-              </DialogTitle>
-              {winner.declared && (
-                <p className="text-sm text-[#7a6a52]">ウニャモ宣言で勝利しました</p>
-              )}
-            </div>
-          )}
-          {!winner && (
-            <DialogTitle className="text-xl font-heading font-bold text-[#281e14]">
-              ゲーム終了
-            </DialogTitle>
-          )}
-        </DialogHeader>
 
-        {/* 順位リスト */}
-        <div className="relative z-10 px-4 pb-3 space-y-2">
+              {/* 順位リスト */}
+              <div className="px-4 pb-3 space-y-2">
           {sorted.map(r => (
             <div
               key={r.playerId}
@@ -162,31 +195,34 @@ export function ResultModal({ open, results, myPlayerId, isHost, onPlayAgain, on
           ))}
         </div>
 
-        {/* フッタボタン */}
-        <div className="relative z-10 flex gap-2 px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-          <button
-            className="flex-1 py-3 rounded-full border-2 border-[#e7ddc8] text-[#7a6a52] font-heading font-bold text-sm
-              hover:bg-[#f0e9d8] transition-colors"
-            onClick={onExit}
-          >
-            退室
-          </button>
-          {isHost ? (
-            <motion.button
-              className="flex-1 py-3 rounded-full bg-[#1e6b4d] text-white font-heading font-bold text-sm
-                shadow-lg shadow-[#1e6b4d]/30 hover:bg-[#185a3e] transition-colors"
-              whileTap={{ scale: 0.96 }}
-              onClick={onPlayAgain}
-            >
-              もう一度
-            </motion.button>
-          ) : (
-            <span className="flex-1 text-center text-[#7a6a52] text-xs py-3">
-              ホストの再戦待ち...
-            </span>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+              {/* フッタボタン */}
+              <div className="flex gap-2 px-4 pb-5">
+                <button
+                  className="flex-1 py-3 rounded-full border-2 border-[#e7ddc8] text-[#7a6a52] font-heading font-bold text-sm
+                    hover:bg-[#f0e9d8] transition-colors"
+                  onClick={onExit}
+                >
+                  退室
+                </button>
+                {isHost ? (
+                  <motion.button
+                    className="flex-1 py-3 rounded-full bg-[#1e6b4d] text-white font-heading font-bold text-sm
+                      shadow-lg shadow-[#1e6b4d]/30 hover:bg-[#185a3e] transition-colors"
+                    whileTap={{ scale: 0.96 }}
+                    onClick={onPlayAgain}
+                  >
+                    もう一度
+                  </motion.button>
+                ) : (
+                  <span className="flex-1 text-center text-[#7a6a52] text-xs py-3">
+                    ホストの再戦待ち...
+                  </span>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }
