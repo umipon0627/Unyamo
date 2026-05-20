@@ -80,7 +80,11 @@ export function decideDiscard(
     if (group.length >= 2) validGroups.push(group)
   }
 
-  if (validGroups.length > 0) {
+  // 手札を 0 枚にしないために、特殊操作で捨てられる枚数は最大 hand.length - 1。
+  // (DISCARD_MULTIPLE は最低2枚必要)
+  const maxSpecialDiscard = Math.min(3, hand.length - 1)
+
+  if (validGroups.length > 0 && maxSpecialDiscard >= 2) {
     // グループの合計点が最も高いものを選ぶ（ジョーカーを含む場合でも数字のみで比較）
     const bestGroup = validGroups.reduce((best, group) => {
       const bestScore = best.reduce((s, c) => s + getCardScore(c), 0)
@@ -88,9 +92,10 @@ export function decideDiscard(
       return groupScore > bestScore ? group : best
     }, validGroups[0]!)
 
-    // 最大3枚まで（2枚グループなら2枚、3枚以上なら3枚）
-    const toDiscard = bestGroup.slice(0, 3)
-    return toDiscard.map(c => c.id)
+    // 上限を maxSpecialDiscard でクランプ（手札を 0 枚にしない）
+    const toDiscard = bestGroup.slice(0, maxSpecialDiscard)
+    if (toDiscard.length >= 2) return toDiscard.map(c => c.id)
+    // フォールスルー: 2枚未満になる場合は単数捨てへ
   }
 
   // グループなし: 最高点の1枚を捨てる（ジョーカーは最低優先度）

@@ -45,6 +45,25 @@ export function validateDiscardMultiple(cards: Card[]): ValidationResult {
   return { valid: true }
 }
 
+/**
+ * 捨てた結果、手札が 0 枚にならないことを検証する。
+ * ターン終了時に手札 0 枚はゲーム進行上おかしいので必ず 1 枚以上残す。
+ * 単数捨て (1 枚) でも特殊操作 (2-3 枚) でも適用する。
+ */
+export function validateDiscardLeavesHand(
+  hand: Card[],
+  discardCount: number
+): ValidationResult {
+  if (hand.length - discardCount < 1) {
+    return {
+      valid: false,
+      code: 'WOULD_EMPTY_HAND',
+      message: 'Discard would leave you with no cards in hand',
+    }
+  }
+  return { valid: true }
+}
+
 export function validateUnyamo(hand: Card[]): ValidationResult {
   if (calculateHandScore(hand) > 5) {
     return { valid: false, code: 'SCORE_TOO_HIGH', message: 'Hand score must be 5 or less to declare Unyamo' }

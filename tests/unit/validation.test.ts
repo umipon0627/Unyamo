@@ -4,6 +4,7 @@ import {
   validateDiscardMultiple, validateUnyamo, validateDrawSource,
   validateDiscardPickup, validateUnyamoNotYetDeclared,
   validateDrawPhase, validateDiscardPhase, validateNoDuplicateAction,
+  validateDiscardLeavesHand,
 } from '@/game-logic/validation'
 import type { GameState, PlayerState } from '@/types/game'
 import type { Card } from '@/types/card'
@@ -191,5 +192,25 @@ describe('validateNoDuplicateAction', () => {
     const r = validateNoDuplicateAction(makePlayer({ hasUsedSpecialAction: true }), 'special')
     expect(r.valid).toBe(false)
     if (!r.valid) expect(r.code).toBe('ALREADY_USED_SPECIAL')
+  })
+})
+
+describe('validateDiscardLeavesHand', () => {
+  it('returns valid when discard leaves at least 1 card', () => {
+    const hand = [makeCard(3), makeCard(5), makeCard(7), makeCard(9)]
+    expect(validateDiscardLeavesHand(hand, 3).valid).toBe(true)
+    expect(validateDiscardLeavesHand(hand, 1).valid).toBe(true)
+  })
+  it('returns invalid when discard would empty hand', () => {
+    const hand = [makeCard(3), makeCard(5)]
+    const r = validateDiscardLeavesHand(hand, 2)
+    expect(r.valid).toBe(false)
+    if (!r.valid) expect(r.code).toBe('WOULD_EMPTY_HAND')
+  })
+  it('returns invalid when discarding all 3 from a 3-card hand', () => {
+    const hand = [makeCard(3), makeCard(3), makeCard(3)]
+    const r = validateDiscardLeavesHand(hand, 3)
+    expect(r.valid).toBe(false)
+    if (!r.valid) expect(r.code).toBe('WOULD_EMPTY_HAND')
   })
 })

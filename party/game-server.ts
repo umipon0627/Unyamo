@@ -11,7 +11,7 @@ import {
   validateTurn, validatePhase, validateCardExists,
   validateDiscardMultiple, validateUnyamo, validateNoDuplicateAction, validateDrawSource,
   validateDiscardPickup, validateDrawPhase, validateDiscardPhase,
-  validateUnyamoNotYetDeclared,
+  validateUnyamoNotYetDeclared, validateDiscardLeavesHand,
 } from '../src/game-logic/validation'
 import { judgeWinner } from '../src/game-logic/unyamo'
 import { decideUnyamoDeclaration, decideDrawSource, decideDiscard } from '../src/game-logic/cpu'
@@ -494,6 +494,7 @@ export default class GameServer implements Party.Server {
         validateNoDuplicateAction(player, 'special'),
         validateCardExists(player.hand, cardIds),
         validateDiscardMultiple(selectedCards),
+        validateDiscardLeavesHand(player.hand, cardIds.length),
       ]
       for (const r of checks) {
         if (!r.valid) return
@@ -612,6 +613,7 @@ export default class GameServer implements Party.Server {
       validateNoDuplicateAction(player, 'special'),
       validateCardExists(player.hand, cardIds),
       validateDiscardMultiple(selectedCards),
+      validateDiscardLeavesHand(player.hand, cardIds.length),
     ]
     for (const r of checks) {
       if (!r.valid) {
