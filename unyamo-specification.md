@@ -19,7 +19,7 @@
 
 ### 2.1 基本設定
 - デッキ: トランプ1デッキ（54枚、ジョーカー最大2枚）
-- プレイヤー数: 3〜8人
+- プレイヤー数: 2〜5人
 - 初期手札: 3枚
 - 勝利条件: 最終的な手札合計点が最も低いプレイヤーが勝利
 
@@ -366,7 +366,7 @@ interface Card {
 }
 
 interface RoomConfig {
-  maxPlayers: number;     // 3-8
+  maxPlayers: number;     // 2-5
   roomName: string;
   isPrivate: boolean;
   password?: string;      // ハッシュ化して保持
@@ -568,7 +568,7 @@ import { z } from 'zod';
 
 const createRoomSchema = z.object({
   roomName: z.string().min(1).max(30).trim(),
-  maxPlayers: z.number().int().min(3).max(8),
+  maxPlayers: z.number().int().min(2).max(5),
   isPrivate: z.boolean(),
   password: z.string().min(4).max(20).optional(),
 });

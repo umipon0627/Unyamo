@@ -46,13 +46,13 @@ export default async function PlayPage() {
                     オンライン対戦
                   </h2>
                   <p className="text-white/70 text-xs font-heading font-bold mt-0.5">
-                    最大8人でマルチプレイ
+                    最大5人でマルチプレイ
                   </p>
                 </div>
               </div>
               <p className="text-white/80 text-sm leading-relaxed">
                 ルームを作成して友達を招待。<br />
-                最大8人でリアルタイム対戦！
+                最大5人でリアルタイム対戦！
               </p>
               <div className="mt-4 flex justify-end">
                 <span className="font-heading font-bold text-white/90 text-sm">

@@ -148,7 +148,7 @@ export default class GameServer implements Party.Server {
         unyamoDeclarerId: null,
         remainingPlayersAfterDeclare: [],
         hostId: identity.userId,
-        roomConfig: { maxPlayers: 8, roomName: escapeHtml(this.room.id), isPrivate: false },
+        roomConfig: { maxPlayers: 5, roomName: escapeHtml(this.room.id), isPrivate: false },
         startedAt: null,
         lastDiscardedCardIds: [],
       }

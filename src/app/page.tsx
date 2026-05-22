@@ -43,7 +43,7 @@ export default async function LandingPage() {
           「ウニャモ！」を宣言しよう。
         </p>
         <p className="text-unyamo-ink-muted/70 text-sm mb-10 max-w-xs">
-          2〜8人で遊べる、オリジナルトランプゲーム。
+          2〜5人で遊べる、オリジナルトランプゲーム。
         </p>
 
         {/* CTA */}

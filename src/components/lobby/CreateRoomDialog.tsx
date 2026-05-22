@@ -117,7 +117,7 @@ export function CreateRoomDialog() {
                 最大人数
               </Label>
               <div className="flex gap-1.5 flex-wrap">
-                {[2, 3, 4, 5, 6, 7, 8].map(n => (
+                {[2, 3, 4, 5].map(n => (
                   <button
                     key={n}
                     type="button"

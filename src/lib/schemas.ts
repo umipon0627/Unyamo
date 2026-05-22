@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 export const createRoomSchema = z.object({
   roomName: z.string().min(1).max(30).trim(),
-  maxPlayers: z.number().int().min(2).max(8),
+  maxPlayers: z.number().int().min(2).max(5),
   isPrivate: z.boolean(),
   password: z.string().min(4).max(20).optional(),
 })
