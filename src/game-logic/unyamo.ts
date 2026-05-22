@@ -27,35 +27,40 @@ export function judgeWinner(
   if (!declarer) throw new Error('Declarer not found')
 
   const declarerScore = declarer.score
-  const othersWithLowerOrEqual = scores
-    .filter(p => p.id !== declarerId)
-    .some(p => p.score <= declarerScore)
+  const others = scores.filter(p => p.id !== declarerId)
+  const othersWithLowerOrEqual = others.some(p => p.score <= declarerScore)
+  // 非宣言者は点数昇順で順位付け（同点は同順位）
+  const sortedOthers = [...others].sort((a, b) => a.score - b.score)
 
   if (othersWithLowerOrEqual) {
-    // 宣言者は最下位（仕様2.5節: 同点でも宣言者が最下位）
-    const others = scores.filter(p => p.id !== declarerId)
-    const sortedOthers = [...others].sort((a, b) => a.score - b.score)
+    // 宣言者は最下位（仕様2.5節: 同点でも宣言者が最下位）。
+    // 非宣言者は点数昇順で1位から並べ、最小点のプレイヤーが勝者。
     const results: JudgeResult[] = sortedOthers.map(p => {
       const rank = sortedOthers.findIndex(o => o.score === p.score) + 1
-      return { playerId: p.id, totalScore: p.score, rank, declared: false, isWinner: rank === 1 && !othersWithLowerOrEqual }
+      return { playerId: p.id, totalScore: p.score, rank, declared: false, isWinner: rank === 1 }
     })
-    const declarerRank = players.length
     results.push({
       playerId: declarerId,
       totalScore: declarerScore,
-      rank: declarerRank,
+      rank: players.length,
       declared: true,
       isWinner: false,
     })
     return results
   } else {
-    // 宣言者の勝利
-    return scores.map(p => ({
-      playerId: p.id,
-      totalScore: p.score,
-      rank: p.id === declarerId ? 1 : 2,
-      declared: p.id === declarerId,
-      isWinner: p.id === declarerId,
-    }))
+    // 宣言者の勝利（単独最小）。宣言者=1位・勝者。
+    // 非宣言者は点数昇順で2位以降に並べる（同点は同順位）。
+    const results: JudgeResult[] = sortedOthers.map(p => {
+      const rank = sortedOthers.findIndex(o => o.score === p.score) + 2
+      return { playerId: p.id, totalScore: p.score, rank, declared: false, isWinner: false }
+    })
+    results.push({
+      playerId: declarerId,
+      totalScore: declarerScore,
+      rank: 1,
+      declared: true,
+      isWinner: true,
+    })
+    return results
   }
 }
