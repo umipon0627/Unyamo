@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import {
   createRoom, getRoom, listRooms, deleteRoom,
   updateRoomPlayers, touchRoom,
+  generateRoomId, generateUniqueRoomId,
   ROOM_IDLE_TIMEOUT_MS, _resetRoomStoreForTest,
 } from '@/lib/room-store'
 
@@ -69,5 +70,43 @@ describe('room-store', () => {
     const rooms = listRooms()
     expect(rooms).toHaveLength(1)
     expect(rooms[0]?.currentPlayers).toBe(2)
+  })
+})
+
+describe('generateRoomId / generateUniqueRoomId', () => {
+  beforeEach(() => {
+    _resetRoomStoreForTest()
+  })
+
+  it('generates an ID of the requested length (default 4)', () => {
+    expect(generateRoomId()).toHaveLength(4)
+    expect(generateRoomId(5)).toHaveLength(5)
+    expect(generateRoomId(6)).toHaveLength(6)
+  })
+
+  it('uses only the safe alphabet (no 0/O/1/I/L/S, only A-Z and 2-9)', () => {
+    const safe = /^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]+$/
+    for (let i = 0; i < 200; i++) {
+      expect(generateRoomId(4)).toMatch(safe)
+    }
+  })
+
+  it('returns an ID not yet in the room store', () => {
+    const id = generateUniqueRoomId()
+    expect(id).toMatch(/^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{4,5}$/)
+    expect(getRoom(id)).toBeUndefined()
+  })
+
+  it('avoids collisions with existing rooms', () => {
+    // 既知のIDを大量に占有しても、generateUniqueRoomIdはぶつからない別IDを返す
+    const occupied = new Set<string>()
+    for (let i = 0; i < 50; i++) {
+      const id = generateRoomId(4)
+      occupied.add(id)
+      createRoom({ id, name: 'x', hostId: 'u', hostName: 'h', maxPlayers: 4, currentPlayers: 1, isPrivate: false })
+    }
+    const fresh = generateUniqueRoomId()
+    expect(occupied.has(fresh)).toBe(false)
+    expect(getRoom(fresh)).toBeUndefined()
   })
 })

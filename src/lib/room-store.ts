@@ -1,6 +1,42 @@
 // ロビー用ルームメタデータ（インメモリ、開発用）
 // 本番はSupabaseテーブルに移行可能
 
+/**
+ * 紛らわしい文字（0/O、1/I/L、5/S 等）を除外した英数字アルファベット（32文字）。
+ * 4桁で 32^4 = 約100万通り。短くて目視・口頭・手入力しやすい。
+ */
+const ROOM_ID_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
+
+/**
+ * 指定長さのランダムな英数字ルームIDを生成する（衝突チェックなし）。
+ */
+export function generateRoomId(length: number = 4): string {
+  const bytes = new Uint8Array(length)
+  crypto.getRandomValues(bytes)
+  let id = ''
+  for (let i = 0; i < length; i++) {
+    id += ROOM_ID_ALPHABET[bytes[i]! % ROOM_ID_ALPHABET.length]
+  }
+  return id
+}
+
+/**
+ * 既存ルームと衝突しない短いルームIDを生成する。
+ * 4桁で10回試行し、それでも衝突する場合は5桁にフォールバック。
+ * 32^4 = 1,048,576 通りあるため、同時稼働ルームが千〜数万台でも実用上ほぼ衝突しない。
+ */
+export function generateUniqueRoomId(): string {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const id = generateRoomId(4)
+    if (!rooms.has(id)) return id
+  }
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const id = generateRoomId(5)
+    if (!rooms.has(id)) return id
+  }
+  throw new Error('Failed to generate unique room ID')
+}
+
 export interface RoomMeta {
   id: string
   name: string

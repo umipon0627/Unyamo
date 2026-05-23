@@ -2,11 +2,10 @@ export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createRoomSchema } from '@/lib/schemas'
-import { createRoom, listRooms } from '@/lib/room-store'
+import { createRoom, listRooms, generateUniqueRoomId } from '@/lib/room-store'
 import { checkRateLimit, checkRoomCreationLimit } from '@/lib/rate-limit'
 import { getCurrentUser } from '@/lib/current-user'
 import { escapeHtml } from '@/lib/utils'
-import { randomUUID } from 'crypto'
 import bcrypt from 'bcryptjs'
 
 function getIp(req: NextRequest): string {
@@ -55,7 +54,7 @@ export async function POST(req: NextRequest) {
 
   const { roomName, maxPlayers, isPrivate, password } = parsed.data
   const room = createRoom({
-    id: randomUUID(),
+    id: generateUniqueRoomId(),
     name: escapeHtml(roomName),
     hostId: user.id,
     hostName: escapeHtml(user.name),
