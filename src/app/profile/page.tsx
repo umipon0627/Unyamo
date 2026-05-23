@@ -58,7 +58,10 @@ async function fetchStatsForUser(userId: string): Promise<StatsData | null> {
       totalScore: dbUser.totalScore,
       recentGames: dbUser.gameResults,
     }
-  } catch {
+  } catch (e) {
+    // 原因調査用: catchを握りつぶさずに本番ログに残す
+    const msg = e instanceof Error ? `${e.name}: ${e.message}` : String(e)
+    console.error('[profile] fetchStatsForUser failed for userId=', userId, '|', msg)
     return null
   }
 }
