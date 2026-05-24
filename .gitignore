@@ -13,6 +13,7 @@ public/workbox-*.js.map
 .vercel
 .playwright-mcp/
 *.png
+!public/icons/*.png
 tsconfig.tsbuildinfo
 .partykit/
 playwright-report/

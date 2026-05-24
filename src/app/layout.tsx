@@ -22,8 +22,13 @@ export const metadata: Metadata = {
     title: 'Unyamo',
   },
   icons: {
-    icon: '/icons/icon.svg',
-    apple: '/icons/icon.svg',
+    icon: [
+      { url: '/icons/favicon-32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: '/icons/apple-touch-icon.png',
+    shortcut: '/icons/favicon-32.png',
   },
 }
 
@@ -32,7 +37,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: '#fbf6ec',
+  themeColor: '#1e6b4d',
   viewportFit: 'cover',
 }
 
