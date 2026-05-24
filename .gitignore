@@ -1,5 +1,6 @@
 node_modules
 .claude/worktrees
+.claire
 .next
 .env
 .env.local
@@ -14,6 +15,7 @@ public/workbox-*.js.map
 .playwright-mcp/
 *.png
 !public/icons/*.png
+!docs/design-ref/*.png
 tsconfig.tsbuildinfo
 .partykit/
 playwright-report/
