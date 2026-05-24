@@ -1,7 +1,7 @@
 import type { Card } from '@/types/card'
 import { calculateHandScore } from './scoring'
 
-export function canDeclareUnyamo(hand: Card[]): boolean {
+export function canDeclareUnyam(hand: Card[]): boolean {
   return calculateHandScore(hand) <= 5
 }
 

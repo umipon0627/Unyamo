@@ -12,7 +12,7 @@ function Card({
       data-slot="card"
       data-size={size}
       className={cn(
-        "group/card flex flex-col gap-4 overflow-hidden rounded-2xl bg-card py-5 text-sm text-card-foreground border-2 border-unyamo-border shadow-[0_6px_20px_-6px_rgba(40,30,20,0.18)] has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[size=sm]:gap-3 data-[size=sm]:py-3 data-[size=sm]:has-data-[slot=card-footer]:pb-0 *:[img:first-child]:rounded-t-2xl *:[img:last-child]:rounded-b-2xl",
+        "group/card flex flex-col gap-4 overflow-hidden rounded-2xl bg-card py-5 text-sm text-card-foreground border-2 border-unyam-border shadow-[0_6px_20px_-6px_rgba(40,30,20,0.18)] has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[size=sm]:gap-3 data-[size=sm]:py-3 data-[size=sm]:has-data-[slot=card-footer]:pb-0 *:[img:first-child]:rounded-t-2xl *:[img:last-child]:rounded-b-2xl",
         className
       )}
       {...props}
@@ -38,7 +38,7 @@ function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card-title"
       className={cn(
-        "font-heading text-base leading-snug font-bold text-unyamo-ink group-data-[size=sm]/card:text-sm",
+        "font-heading text-base leading-snug font-bold text-unyam-ink group-data-[size=sm]/card:text-sm",
         className
       )}
       {...props}
@@ -50,7 +50,7 @@ function CardDescription({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card-description"
-      className={cn("text-sm text-unyamo-ink-muted", className)}
+      className={cn("text-sm text-unyam-ink-muted", className)}
       {...props}
     />
   )
@@ -84,7 +84,7 @@ function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card-footer"
       className={cn(
-        "flex items-center rounded-b-2xl border-t border-unyamo-border bg-unyamo-cream/60 p-5 group-data-[size=sm]/card:p-4",
+        "flex items-center rounded-b-2xl border-t border-unyam-border bg-unyam-cream/60 p-5 group-data-[size=sm]/card:p-4",
         className
       )}
       {...props}

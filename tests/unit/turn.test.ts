@@ -15,7 +15,7 @@ const makeState = (overrides: Partial<GameState> = {}): GameState => ({
   discardPile: [],
   currentTurnIndex: 0,
   turnOrder: ['p1', 'p2', 'p3'],
-  unyamoDeclarerId: null,
+  unyamDeclarerId: null,
   remainingPlayersAfterDeclare: [],
   hostId: 'p1',
   roomConfig: { maxPlayers: 4, roomName: 'Test', isPrivate: false },
@@ -63,15 +63,15 @@ describe('advanceTurn', () => {
 })
 
 describe('isRoundComplete', () => {
-  it('false when no unyamo declared', () => {
+  it('false when no unyam declared', () => {
     expect(isRoundComplete(makeState())).toBe(false)
   })
   it('true when declarer set and remaining empty', () => {
-    const state = makeState({ unyamoDeclarerId: 'p1', remainingPlayersAfterDeclare: [] })
+    const state = makeState({ unyamDeclarerId: 'p1', remainingPlayersAfterDeclare: [] })
     expect(isRoundComplete(state)).toBe(true)
   })
   it('false when remaining players exist', () => {
-    const state = makeState({ unyamoDeclarerId: 'p1', remainingPlayersAfterDeclare: ['p2'] })
+    const state = makeState({ unyamDeclarerId: 'p1', remainingPlayersAfterDeclare: ['p2'] })
     expect(isRoundComplete(state)).toBe(false)
   })
 })

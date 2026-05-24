@@ -51,26 +51,26 @@ export function JoinRoomDialog() {
     <>
       <Button
         variant="outline"
-        className="rounded-full border-unyamo-border text-unyamo-ink hover:bg-unyamo-cream hover:border-unyamo-green font-heading font-bold px-4"
+        className="rounded-full border-unyam-border text-unyam-ink hover:bg-unyam-cream hover:border-unyam-green font-heading font-bold px-4"
         onClick={() => setOpen(true)}
       >
         ルームIDで参加
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="bg-unyamo-surface border-unyamo-border rounded-3xl max-w-sm shadow-xl">
+        <DialogContent className="bg-unyam-surface border-unyam-border rounded-3xl max-w-sm shadow-xl">
           <DialogHeader>
-            <DialogTitle className="font-heading font-bold text-unyamo-ink text-xl">
+            <DialogTitle className="font-heading font-bold text-unyam-ink text-xl">
               ルームIDで参加
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-1">
-            <p className="text-unyamo-ink-muted text-sm">
+            <p className="text-unyam-ink-muted text-sm">
               ホストから共有されたルームIDを入力してください。
             </p>
             <div>
               <Label
                 htmlFor="roomId"
-                className="text-unyamo-ink text-sm font-medium mb-1.5 block"
+                className="text-unyam-ink text-sm font-medium mb-1.5 block"
               >
                 ルームID
               </Label>
@@ -83,16 +83,16 @@ export function JoinRoomDialog() {
                 maxLength={64}
                 autoFocus
                 autoComplete="off"
-                className="rounded-xl border-unyamo-border bg-unyamo-cream text-unyamo-ink placeholder:text-unyamo-ink-muted/60 font-mono tracking-wider"
+                className="rounded-xl border-unyam-border bg-unyam-cream text-unyam-ink placeholder:text-unyam-ink-muted/60 font-mono tracking-wider"
               />
             </div>
             {error && (
-              <p className="text-unyamo-red text-sm font-medium" role="alert">
+              <p className="text-unyam-red text-sm font-medium" role="alert">
                 {error}
               </p>
             )}
             <Button
-              className="w-full rounded-full bg-unyamo-green text-white hover:bg-unyamo-green/90 font-heading font-bold py-2.5"
+              className="w-full rounded-full bg-unyam-green text-white hover:bg-unyam-green/90 font-heading font-bold py-2.5"
               onClick={handleJoin}
             >
               参加する

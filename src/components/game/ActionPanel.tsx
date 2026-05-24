@@ -23,7 +23,7 @@ interface ActionPanelProps {
 }
 
 /**
- * 仕様 2.6節: ターンの流れは ACTION_PHASE（DISCARD or ウニャモ宣言）→ DRAW_PHASE → TURN_END。
+ * 仕様 2.6節: ターンの流れは ACTION_PHASE（DISCARD or ウニャム宣言）→ DRAW_PHASE → TURN_END。
  * - canDiscard=true: ACTION_PHASE。手札を選んで捨てる（1枚 or 2-3枚）。
  * - isDrawPhase=true: DRAW_PHASE。山札 or 捨て札から1枚引く。
  */

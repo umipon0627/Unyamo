@@ -13,7 +13,7 @@ interface PlayerAreaProps {
     isConnected: boolean
   }
   isCurrentTurn: boolean
-  hasDeclaredUnyamo: boolean
+  hasDeclaredUnyam: boolean
   position: 'top' | 'left' | 'right'
   compact?: boolean
 }
@@ -35,7 +35,7 @@ function getAvatarColor(name: string): string {
   return AVATAR_COLORS[hash] ?? 'bg-[#2e9c8a]'
 }
 
-export function PlayerArea({ player, isCurrentTurn, hasDeclaredUnyamo, compact = false }: PlayerAreaProps) {
+export function PlayerArea({ player, isCurrentTurn, hasDeclaredUnyam, compact = false }: PlayerAreaProps) {
   const avatarColor = getAvatarColor(player.name)
   const initial = player.name[0]?.toUpperCase() ?? '?'
 
@@ -47,7 +47,7 @@ export function PlayerArea({ player, isCurrentTurn, hasDeclaredUnyamo, compact =
         isCurrentTurn && 'ring-2 ring-[#c8202b] bg-[#c8202b]/10 border-[#c8202b]/30',
         !player.isConnected && 'opacity-40',
       )}
-      aria-label={`${player.name} ${player.cardCount}枚${isCurrentTurn ? ' 現在のターン' : ''}${hasDeclaredUnyamo ? ' ウニャモ宣言済' : ''}`}
+      aria-label={`${player.name} ${player.cardCount}枚${isCurrentTurn ? ' 現在のターン' : ''}${hasDeclaredUnyam ? ' ウニャム宣言済' : ''}`}
     >
       <div className="flex items-center gap-1.5">
         <Avatar className="h-7 w-7">
@@ -64,7 +64,7 @@ export function PlayerArea({ player, isCurrentTurn, hasDeclaredUnyamo, compact =
             {player.cardCount}枚
           </span>
         </div>
-        {hasDeclaredUnyamo && (
+        {hasDeclaredUnyam && (
           <Badge className="bg-[#e5b649] text-[#281e14] text-[9px] px-1 py-0 font-heading font-bold">
             宣言
           </Badge>

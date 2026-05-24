@@ -9,12 +9,12 @@ import { createDeck, shuffleDeck, dealCards, drawFromDeck, drawFromDiscardPile }
 import { initializeTurnOrder, advanceTurn, getCurrentPlayerId, isRoundComplete } from '../src/game-logic/turn'
 import {
   validateTurn, validatePhase, validateCardExists,
-  validateDiscardMultiple, validateUnyamo, validateNoDuplicateAction, validateDrawSource,
+  validateDiscardMultiple, validateUnyam, validateNoDuplicateAction, validateDrawSource,
   validateDiscardPickup, validateDrawPhase, validateDiscardPhase,
-  validateUnyamoNotYetDeclared, validateDiscardLeavesHand,
+  validateUnyamNotYetDeclared, validateDiscardLeavesHand,
 } from '../src/game-logic/validation'
-import { judgeWinner } from '../src/game-logic/unyamo'
-import { decideUnyamoDeclaration, decideDrawSource, decideDiscard } from '../src/game-logic/cpu'
+import { judgeWinner } from '../src/game-logic/unyam'
+import { decideUnyamDeclaration, decideDrawSource, decideDiscard } from '../src/game-logic/cpu'
 import type { CpuDifficulty } from '../src/game-logic/cpu'
 import { escapeHtml } from './utils'
 import { TURN_TIMEOUT_MS } from './timeout'
@@ -88,7 +88,7 @@ export default class GameServer implements Party.Server {
       case 'DISCARD': return this.handleDiscard(sender, msg.payload.cardId)
       case 'DISCARD_MULTIPLE': return this.handleDiscardMultiple(sender, msg.payload.cardIds)
       case 'DRAW': return this.handleDraw(sender, msg.payload.source)
-      case 'DECLARE_UNYAMO': return this.handleDeclareUnyamo(sender)
+      case 'DECLARE_UNYAMO': return this.handleDeclareUnyam(sender)
       case 'RECONNECT': return this.handleReconnect(sender, msg.payload.token)
       case 'RESTART_GAME': return this.handleRestartGame(sender)
     }
@@ -145,7 +145,7 @@ export default class GameServer implements Party.Server {
         discardPile: [],
         currentTurnIndex: 0,
         turnOrder: [],
-        unyamoDeclarerId: null,
+        unyamDeclarerId: null,
         remainingPlayersAfterDeclare: [],
         hostId: identity.userId,
         roomConfig: { maxPlayers: 5, roomName: escapeHtml(this.room.id), isPrivate: false },
@@ -229,7 +229,7 @@ export default class GameServer implements Party.Server {
       currentTurnIndex: 0,
       startedAt: Date.now(),
       lastDiscardedCardIds: [],
-      unyamoDeclarerId: null,
+      unyamDeclarerId: null,
       remainingPlayersAfterDeclare: [],
     }
     this.broadcastGameState()
@@ -296,7 +296,7 @@ export default class GameServer implements Party.Server {
       currentTurnIndex: 0,
       startedAt: Date.now(),
       lastDiscardedCardIds: [],
-      unyamoDeclarerId: null,
+      unyamDeclarerId: null,
       remainingPlayersAfterDeclare: [],
     }
     this.broadcastGameState()
@@ -345,7 +345,7 @@ export default class GameServer implements Party.Server {
    * Alarm 発火時のハンドラ。
    * 対象CPUの「1ターン丸ごと」(必要なら宣言→ or →DRAW→DISCARD→ターン進行)を
    * 同一呼び出し内で同期的に完走する。続きが必要なら advanceAfterDiscard /
-   * performDeclareUnyamo 末尾の scheduleCpuActionIfNeeded が次の単一Alarmを張る。
+   * performDeclareUnyam 末尾の scheduleCpuActionIfNeeded が次の単一Alarmを張る。
    */
   async onAlarm() {
     const alarmStep = await this.room.storage.get<CpuAlarmStep>(CPU_ALARM_KEY)
@@ -362,7 +362,7 @@ export default class GameServer implements Party.Server {
 
   /**
    * CPUの1ターンを丸ごと実行する（Alarmから1ホップで呼ばれる）。
-   * - 宣言条件成立かつ未宣言なら performDeclareUnyamo（その中で次Alある）
+   * - 宣言条件成立かつ未宣言なら performDeclareUnyam（その中で次Alある）
    * - そうでなければ DRAW → broadcast → DISCARD → advanceAfterDiscard
    * いずれの経路も末尾で scheduleCpuActionIfNeeded が呼ばれ、
    * 次がCPUなら次の単一Alarmが1つだけ張られる（多段Alarm競合を排除）。
@@ -373,11 +373,11 @@ export default class GameServer implements Party.Server {
     if (!player) return
     if (player.hasDrawnThisTurn) return
 
-    // ウニャモ宣言（ターン開始時のみ・未宣言時のみ）
-    if (this.gameState.unyamoDeclarerId === null) {
-      const shouldDeclare = decideUnyamoDeclaration(player.hand, this.cpuDifficulty)
+    // ウニャム宣言（ターン開始時のみ・未宣言時のみ）
+    if (this.gameState.unyamDeclarerId === null) {
+      const shouldDeclare = decideUnyamDeclaration(player.hand, this.cpuDifficulty)
       if (shouldDeclare) {
-        await this.performDeclareUnyamo(cpuId)
+        await this.performDeclareUnyam(cpuId)
         return
       }
     }
@@ -516,9 +516,9 @@ export default class GameServer implements Party.Server {
   }
 
   /**
-   * ウニャモ宣言の内部処理（CPU・人間共通）
+   * ウニャム宣言の内部処理（CPU・人間共通）
    */
-  private async performDeclareUnyamo(playerId: string) {
+  private async performDeclareUnyam(playerId: string) {
     if (!this.gameState) return
     const player = this.gameState.players.find(p => p.id === playerId)
     if (!player) return
@@ -526,8 +526,8 @@ export default class GameServer implements Party.Server {
     const checks = [
       validatePhase(this.gameState, 'DECLARE_UNYAMO'),
       validateTurn(this.gameState, playerId),
-      validateUnyamoNotYetDeclared(this.gameState),
-      validateUnyamo(player.hand),
+      validateUnyamNotYetDeclared(this.gameState),
+      validateUnyam(player.hand),
     ]
     for (const r of checks) {
       if (!r.valid) return
@@ -540,7 +540,7 @@ export default class GameServer implements Party.Server {
     const remainingPlayers = this.gameState.turnOrder.filter(id => id !== playerId)
     this.gameState = {
       ...this.gameState,
-      unyamoDeclarerId: playerId,
+      unyamDeclarerId: playerId,
       remainingPlayersAfterDeclare: remainingPlayers,
     }
 
@@ -695,7 +695,7 @@ export default class GameServer implements Party.Server {
     if (!this.gameState) return
     this.cancelTurnTimeout()
 
-    if (this.gameState.unyamoDeclarerId) {
+    if (this.gameState.unyamDeclarerId) {
       this.gameState = {
         ...this.gameState,
         remainingPlayersAfterDeclare: this.gameState.remainingPlayersAfterDeclare.filter(id => id !== actorId),
@@ -718,7 +718,7 @@ export default class GameServer implements Party.Server {
     await this.scheduleCpuActionIfNeeded()
   }
 
-  private async handleDeclareUnyamo(conn: Party.Connection) {
+  private async handleDeclareUnyam(conn: Party.Connection) {
     const info = this.connections.get(conn.id)
     if (!info || !this.gameState) return
 
@@ -728,8 +728,8 @@ export default class GameServer implements Party.Server {
     const checks = [
       validatePhase(this.gameState, 'DECLARE_UNYAMO'),
       validateTurn(this.gameState, info.userId),
-      validateUnyamoNotYetDeclared(this.gameState),
-      validateUnyamo(player.hand),
+      validateUnyamNotYetDeclared(this.gameState),
+      validateUnyam(player.hand),
     ]
     for (const r of checks) {
       if (!r.valid) {
@@ -745,7 +745,7 @@ export default class GameServer implements Party.Server {
     const remainingPlayers = this.gameState.turnOrder.filter(id => id !== info.userId)
     this.gameState = {
       ...this.gameState,
-      unyamoDeclarerId: info.userId,
+      unyamDeclarerId: info.userId,
       remainingPlayersAfterDeclare: remainingPlayers,
     }
 
@@ -812,7 +812,7 @@ export default class GameServer implements Party.Server {
       discardPile: [],
       currentTurnIndex: 0,
       turnOrder: [],
-      unyamoDeclarerId: null,
+      unyamDeclarerId: null,
       remainingPlayersAfterDeclare: [],
       startedAt: null,
       lastDiscardedCardIds: [],
@@ -825,7 +825,7 @@ export default class GameServer implements Party.Server {
     this.cancelTurnTimeout()
     this.gameState = { ...this.gameState, phase: 'JUDGING' }
 
-    const declarerId = this.gameState.unyamoDeclarerId!
+    const declarerId = this.gameState.unyamDeclarerId!
     const results = judgeWinner(
       this.gameState.players.map(p => ({ id: p.id, hand: p.hand })),
       declarerId

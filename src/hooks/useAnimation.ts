@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react'
 
 export function useAnimation() {
   const [isAnimating, setIsAnimating] = useState(false)
-  const [showUnyamoFlash, setShowUnyamoFlash] = useState(false)
+  const [showUnyamFlash, setShowUnyamFlash] = useState(false)
 
   const triggerDraw = useCallback((_cardId: string) => {
     setIsAnimating(true)
@@ -16,10 +16,10 @@ export function useAnimation() {
     setTimeout(() => setIsAnimating(false), 200)
   }, [])
 
-  const triggerUnyamoFlash = useCallback(() => {
-    setShowUnyamoFlash(true)
-    setTimeout(() => setShowUnyamoFlash(false), 600)
+  const triggerUnyamFlash = useCallback(() => {
+    setShowUnyamFlash(true)
+    setTimeout(() => setShowUnyamFlash(false), 600)
   }, [])
 
-  return { isAnimating, showUnyamoFlash, triggerDraw, triggerPlay, triggerUnyamoFlash }
+  return { isAnimating, showUnyamFlash, triggerDraw, triggerPlay, triggerUnyamFlash }
 }

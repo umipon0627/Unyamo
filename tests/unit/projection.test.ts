@@ -16,7 +16,7 @@ const makeState = (players: PlayerState[]): GameState => ({
   discardPile: [makeCard(3)],
   currentTurnIndex: 0,
   turnOrder: players.map(p => p.id),
-  unyamoDeclarerId: null,
+  unyamDeclarerId: null,
   remainingPlayersAfterDeclare: [],
   hostId: players[0]!.id,
   roomConfig: { maxPlayers: 4, roomName: 'Test', isPrivate: false },
@@ -94,14 +94,14 @@ describe('projectStateForPlayer', () => {
 
   it('DECLARE_UNYAMO is not in availableActions when someone has already declared', () => {
     // 仕様 2.4節: 1ラウンドにつき宣言者は1人のみ。
-    const myHand = [makeCard(1)] // 1点 → canDeclareUnyamo=true
+    const myHand = [makeCard(1)] // 1点 → canDeclareUnyam=true
     const state: GameState = {
       ...makeState([makePlayer('me', myHand), makePlayer('other', [])]),
-      unyamoDeclarerId: 'other',
+      unyamDeclarerId: 'other',
     }
     const projected = projectStateForPlayer(state, 'me')
     expect(projected.availableActions).not.toContain('DECLARE_UNYAMO')
-    expect(projected.canDeclareUnyamo).toBe(false)
+    expect(projected.canDeclareUnyam).toBe(false)
   })
 
   it('availableActions in DRAW_PHASE: DRAW (no DISCARD/DISCARD_MULTIPLE)', () => {
@@ -131,7 +131,7 @@ describe('projectStateForPlayer', () => {
   })
 
   it('DECLARE_UNYAMO available in DRAW_PHASE only (not after drawing)', () => {
-    // ウニャモ宣言はターン開始時（まだ引いていない時）のみ可能
+    // ウニャム宣言はターン開始時（まだ引いていない時）のみ可能
     const myHand = [makeCard(1)] // 1点
     const meDiscardPhase = { ...makePlayer('me', myHand), hasDrawnThisTurn: true }
     const state: GameState = {

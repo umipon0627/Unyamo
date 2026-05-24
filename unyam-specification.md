@@ -1,11 +1,11 @@
-# Unyamo（ウニャモ）Webアプリケーション 技術仕様書
+# Unyam（ウニャム）Webアプリケーション 技術仕様書
 
 ---
 
 ## 1. プロジェクト概要
 
 ### 1.1 目的
-オリジナルトランプゲーム「Unyamo」をオンライン対戦可能なWebアプリケーションとして構築する。
+オリジナルトランプゲーム「Unyam」をオンライン対戦可能なWebアプリケーションとして構築する。
 
 ### 1.2 基本方針
 - 完全無料のインフラ構成
@@ -45,13 +45,13 @@
 2. 山札または捨て札の一番上から1枚引く
 3. 1ターン中に1回のみ実行可能
 
-### 2.4 ウニャモ宣言
+### 2.4 ウニャム宣言
 - 手札合計点が5点以下のとき宣言可能
 - 宣言したターンでそのプレイヤーの操作は終了（カードの捨てや引きは行わない）
 - 宣言後、残りの全プレイヤーが操作を完了してから得点判定
 
 ### 2.5 勝敗判定
-- ウニャモ宣言者が全プレイヤー中最小得点 → 宣言者の勝利
+- ウニャム宣言者が全プレイヤー中最小得点 → 宣言者の勝利
 - 宣言者と同点または宣言者を下回るプレイヤーが1人でも存在 → 宣言者は最下位
 
 ### 2.6 ゲームフロー（状態遷移）
@@ -64,8 +64,8 @@ DEALING（配札）
 PLAYING（プレイ中）
   ↓ ターンループ
   │   TURN_START → ACTION_PHASE → DRAW_PHASE → TURN_END
-  │   ※ ウニャモ宣言時は ACTION_PHASE で宣言 → ラウンド内の残プレイヤーが操作完了後に判定
-  ↓ ウニャモ宣言 & 全員操作完了
+  │   ※ ウニャム宣言時は ACTION_PHASE で宣言 → ラウンド内の残プレイヤーが操作完了後に判定
+  ↓ ウニャム宣言 & 全員操作完了
 JUDGING（判定）
   ↓ 勝敗確定
 RESULT（結果表示）
@@ -136,7 +136,7 @@ WAITING or 終了
 ## 4. ディレクトリ構成
 
 ```
-unyamo/
+unyam/
 ├── .github/
 │   └── workflows/
 │       └── ci.yml                  # GitHub Actions CI
@@ -174,7 +174,7 @@ unyamo/
 │   │   │   ├── PlayerArea.tsx      # プレイヤー情報エリア
 │   │   │   ├── GameBoard.tsx       # ゲームボード全体
 │   │   │   ├── ActionPanel.tsx     # 操作パネル
-│   │   │   ├── UnyamoButton.tsx    # ウニャモ宣言ボタン
+│   │   │   ├── UnyamButton.tsx    # ウニャム宣言ボタン
 │   │   │   ├── TurnIndicator.tsx   # ターン表示
 │   │   │   └── ResultModal.tsx     # 結果モーダル
 │   │   ├── lobby/
@@ -203,7 +203,7 @@ unyamo/
 │       ├── scoring.ts              # スコア計算
 │       ├── validation.ts           # アクション合法性チェック
 │       ├── turn.ts                 # ターン管理
-│       └── unyamo.ts               # ウニャモ宣言ロジック
+│       └── unyam.ts               # ウニャム宣言ロジック
 ├── party/
 │   └── game-server.ts              # PartyKit ゲームサーバー
 ├── prisma/
@@ -316,7 +316,7 @@ model GameResult {
   user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   finalScore   Int
   rank         Int
-  declared     Boolean    @default(false) // ウニャモ宣言したか
+  declared     Boolean    @default(false) // ウニャム宣言したか
   isWinner     Boolean    @default(false)
   
   @@unique([gameRecordId, userId])
@@ -343,7 +343,7 @@ interface GameState {
   discardPile: Card[];    // 捨て札
   currentTurnIndex: number;
   turnOrder: string[];    // プレイヤーIDの順番
-  unyamoDeclarerId: string | null;
+  unyamDeclarerId: string | null;
   remainingPlayersAfterDeclare: string[]; // 宣言後に操作が必要なプレイヤー
   hostId: string;
   roomConfig: RoomConfig;
@@ -393,7 +393,7 @@ interface RoomConfig {
 // カードを引く（捨て or 山札どちらかを操作後に送信）
 { type: 'DRAW', payload: { source: 'deck' | 'discard' } }
 
-// ウニャモ宣言
+// ウニャム宣言
 { type: 'DECLARE_UNYAMO' }
 
 // 再接続
@@ -419,7 +419,7 @@ interface RoomConfig {
     deckCount: number;                 // 山札の残数
     currentTurnPlayerId: string;
     myTotalScore: number;              // 自分の合計点
-    canDeclareUnyamo: boolean;         // 宣言可能か
+    canDeclareUnyam: boolean;         // 宣言可能か
     availableActions: string[];        // 実行可能なアクション一覧
   }
 }
@@ -439,7 +439,7 @@ interface RoomConfig {
 // ターン変更通知
 { type: 'TURN_CHANGE', payload: { currentPlayerId: string } }
 
-// ウニャモ宣言通知
+// ウニャム宣言通知
 { type: 'UNYAMO_DECLARED', payload: { playerId: string, playerName: string } }
 
 // ゲーム結果
@@ -473,7 +473,7 @@ interface RoomConfig {
 2. **フェーズ検証**: 現在のゲームフェーズで許可されたアクションか
 3. **カード存在検証**: 捨てようとしているカードが手札に存在するか
 4. **特殊操作検証**: 捨てるカードが全て同じ数字か、2〜3枚か
-5. **ウニャモ検証**: 手札合計が5点以下か
+5. **ウニャム検証**: 手札合計が5点以下か
 6. **重複操作防止**: 同一ターン内で2回操作していないか
 
 ### 6.4 切断・タイムアウト処理
@@ -621,7 +621,7 @@ const drawSchema = z.object({
 ├──────────────────────────────────┤
 │  操作パネル                       │
 │  [通常捨て] [特殊捨て] [引く]     │
-│  [ウニャモ宣言 ✨]（条件時のみ）   │
+│  [ウニャム宣言 ✨]（条件時のみ）   │
 ├──────────────────────────────────┤
 │  自分の手札（扇形配置）            │
 │      ┌──┐                       │
@@ -649,7 +649,7 @@ const drawSchema = z.object({
 │              │                    │                 │
 ├──────────────┴────────────────────┴─────────────────┤
 │  操作パネル + 自分の手札（横並び）                      │
-│  ┌──┐ ┌──┐ ┌──┐     [捨てる] [引く] [ウニャモ ✨]    │
+│  ┌──┐ ┌──┐ ┌──┐     [捨てる] [引く] [ウニャム ✨]    │
 │  │A♥│ │3♦│ │7♠│                                    │
 │  └──┘ └──┘ └──┘     合計: X点                       │
 └────────────────────────────────────────────────────┘
@@ -663,7 +663,7 @@ const drawSchema = z.object({
   - サーフェス: `#1e293b`（slate-800）
   - ボーダー: `#334155`（slate-700）
 - アクセント: エメラルドグリーン `#10b981`
-- ウニャモ宣言ボタン: ゴールド `#f59e0b` + グロウエフェクト
+- ウニャム宣言ボタン: ゴールド `#f59e0b` + グロウエフェクト
 - カード:
   - 背面: ダークブルーのパターン
   - 表面: 白背景 + 大きな数字とスート
@@ -674,7 +674,7 @@ const drawSchema = z.object({
 - カード配布: デッキから各プレイヤーにフライアニメーション（0.3s）
 - カード捨て: 手札から捨て札へのスライド（0.2s）
 - カード引く: 山札/捨て札から手札へのスライド（0.2s）
-- ウニャモ宣言: ボタンのパルスアニメーション + 画面全体にエフェクト
+- ウニャム宣言: ボタンのパルスアニメーション + 画面全体にエフェクト
 - 勝利: 紙吹雪エフェクト
 - ターン切替: ハイライト移動（0.3s）
 
@@ -743,7 +743,7 @@ PARTYKIT_HOST=
 - `game-logic/deck.ts`: シャッフル、配布のランダム性・枚数検証
 - `game-logic/scoring.ts`: 全カードパターンのスコア計算
 - `game-logic/validation.ts`: 合法/違法アクションの判定
-- `game-logic/unyamo.ts`: 宣言条件・勝敗判定ロジック
+- `game-logic/unyam.ts`: 宣言条件・勝敗判定ロジック
 
 ### 11.2 統合テスト
 
@@ -799,7 +799,7 @@ jobs:
 | 環境 | 用途 | URL |
 |------|------|-----|
 | Production | 本番 | unyamo.vercel.app |
-| Preview | PR確認 | unyamo-xxx.vercel.app |
+| Preview | PR確認 | unyam-xxx.vercel.app |
 | Local | 開発 | localhost:3000 |
 
 ---
@@ -842,7 +842,7 @@ jobs:
 8. カードコンポーネント（SVG or CSS）
 9. ゲームボード画面
 10. 手札の扇形配置 + タップ選択
-11. 操作パネル + ウニャモ宣言ボタン
+11. 操作パネル + ウニャム宣言ボタン
 12. アニメーション実装
 
 ### Phase 4: ロビー・マッチング
@@ -863,10 +863,10 @@ jobs:
 
 ```bash
 # 1. プロジェクト作成
-npx create-next-app@latest unyamo --typescript --tailwind --app --src-dir
+npx create-next-app@latest unyam --typescript --tailwind --app --src-dir
 
 # 2. 依存関係インストール
-cd unyamo
+cd unyam
 npm install next-auth @auth/prisma-adapter prisma @prisma/client
 npm install zod framer-motion partysocket
 npm install -D vitest @testing-library/react playwright
@@ -895,5 +895,5 @@ npx partykit dev           # PartyKit（別ターミナル）
 
 ---
 
-*本仕様書は Unyamo Webアプリケーション v1.0 の実装ガイドとして使用する。*
+*本仕様書は Unyam Webアプリケーション v1.0 の実装ガイドとして使用する。*
 *Claude Code での実装時は、Phase 1 から順に進めること。*

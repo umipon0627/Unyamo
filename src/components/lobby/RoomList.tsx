@@ -135,8 +135,8 @@ export function RoomList({ currentUserId }: RoomListProps) {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-16 gap-3">
-        <div className="w-8 h-8 rounded-full border-4 border-unyamo-border border-t-unyamo-green animate-spin" />
-        <p className="text-unyamo-ink-muted text-sm">読み込み中...</p>
+        <div className="w-8 h-8 rounded-full border-4 border-unyam-border border-t-unyam-green animate-spin" />
+        <p className="text-unyam-ink-muted text-sm">読み込み中...</p>
       </div>
     )
   }
@@ -144,7 +144,7 @@ export function RoomList({ currentUserId }: RoomListProps) {
   if (error) {
     return (
       <div className="text-center py-12">
-        <p className="text-unyamo-red text-sm font-medium">{error}</p>
+        <p className="text-unyam-red text-sm font-medium">{error}</p>
       </div>
     )
   }
@@ -156,11 +156,11 @@ export function RoomList({ currentUserId }: RoomListProps) {
         animate={{ opacity: 1, y: 0 }}
         className="flex flex-col items-center justify-center py-16 gap-3"
       >
-        <div className="w-16 h-16 rounded-full bg-unyamo-border/50 flex items-center justify-center text-3xl">
+        <div className="w-16 h-16 rounded-full bg-unyam-border/50 flex items-center justify-center text-3xl">
           🃏
         </div>
-        <p className="text-unyamo-ink font-heading font-bold text-base">募集中のルームがありません</p>
-        <p className="text-unyamo-ink-muted text-sm">最初のルームを作成しましょう！</p>
+        <p className="text-unyam-ink font-heading font-bold text-base">募集中のルームがありません</p>
+        <p className="text-unyam-ink-muted text-sm">最初のルームを作成しましょう！</p>
       </motion.div>
     )
   }
@@ -168,7 +168,7 @@ export function RoomList({ currentUserId }: RoomListProps) {
   return (
     <>
       {/* ルーム件数 */}
-      <p className="text-unyamo-ink-muted text-xs mb-3">
+      <p className="text-unyam-ink-muted text-xs mb-3">
         {rooms.length} 件のルームが見つかりました
       </p>
 
@@ -188,12 +188,12 @@ export function RoomList({ currentUserId }: RoomListProps) {
 
       {/* パスワード入力ダイアログ */}
       <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
-        <DialogContent className="bg-unyamo-surface border-unyamo-border rounded-3xl max-w-sm shadow-xl">
+        <DialogContent className="bg-unyam-surface border-unyam-border rounded-3xl max-w-sm shadow-xl">
           <DialogHeader>
-            <DialogTitle className="font-heading font-bold text-unyamo-ink text-lg">
+            <DialogTitle className="font-heading font-bold text-unyam-ink text-lg">
               パスワードを入力
             </DialogTitle>
-            <DialogDescription className="text-unyamo-ink-muted text-sm">
+            <DialogDescription className="text-unyam-ink-muted text-sm">
               「{pendingRoomName}」はプライベートルームです。参加にはパスワードが必要です。
             </DialogDescription>
           </DialogHeader>
@@ -202,7 +202,7 @@ export function RoomList({ currentUserId }: RoomListProps) {
             <div>
               <Label
                 htmlFor="room-password"
-                className="text-unyamo-ink text-sm font-medium mb-1.5 block"
+                className="text-unyam-ink text-sm font-medium mb-1.5 block"
               >
                 パスワード
               </Label>
@@ -214,10 +214,10 @@ export function RoomList({ currentUserId }: RoomListProps) {
                 onKeyDown={e => { if (e.key === 'Enter') void handlePasswordSubmit() }}
                 placeholder="パスワードを入力してください"
                 aria-invalid={passwordError !== '' ? true : undefined}
-                className="rounded-xl border-unyamo-border bg-unyamo-cream text-unyamo-ink placeholder:text-unyamo-ink-muted/60"
+                className="rounded-xl border-unyam-border bg-unyam-cream text-unyam-ink placeholder:text-unyam-ink-muted/60"
               />
               {passwordError && (
-                <p className="text-sm text-unyamo-red mt-1.5 font-medium" role="alert">
+                <p className="text-sm text-unyam-red mt-1.5 font-medium" role="alert">
                   {passwordError}
                 </p>
               )}
@@ -229,14 +229,14 @@ export function RoomList({ currentUserId }: RoomListProps) {
               variant="outline"
               onClick={() => handleDialogOpenChange(false)}
               disabled={verifying}
-              className="rounded-full border-unyamo-border text-unyamo-ink-muted hover:bg-unyamo-cream font-heading font-bold"
+              className="rounded-full border-unyam-border text-unyam-ink-muted hover:bg-unyam-cream font-heading font-bold"
             >
               キャンセル
             </Button>
             <Button
               onClick={() => void handlePasswordSubmit()}
               disabled={verifying || !passwordInput}
-              className="rounded-full bg-unyamo-green text-white hover:bg-unyamo-green/90 font-heading font-bold"
+              className="rounded-full bg-unyam-green text-white hover:bg-unyam-green/90 font-heading font-bold"
             >
               {verifying ? '確認中...' : '参加する'}
             </Button>

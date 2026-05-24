@@ -9,16 +9,16 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-unyamo-green text-unyamo-cream shadow-[0_4px_14px_-4px_rgba(30,107,77,0.45)] hover:bg-unyamo-green/90 hover:shadow-[0_6px_18px_-4px_rgba(30,107,77,0.55)] hover:scale-[1.03]",
+          "bg-unyam-green text-unyam-cream shadow-[0_4px_14px_-4px_rgba(30,107,77,0.45)] hover:bg-unyam-green/90 hover:shadow-[0_6px_18px_-4px_rgba(30,107,77,0.55)] hover:scale-[1.03]",
         outline:
-          "border-2 border-unyamo-border bg-unyamo-surface text-unyamo-ink shadow-[0_3px_10px_-4px_rgba(40,30,20,0.15)] hover:bg-unyamo-cream hover:border-unyamo-ink-muted hover:scale-[1.03]",
+          "border-2 border-unyam-border bg-unyam-surface text-unyam-ink shadow-[0_3px_10px_-4px_rgba(40,30,20,0.15)] hover:bg-unyam-cream hover:border-unyam-ink-muted hover:scale-[1.03]",
         secondary:
-          "bg-unyamo-navy text-white shadow-[0_4px_14px_-4px_rgba(42,66,99,0.45)] hover:bg-unyamo-navy/90 hover:scale-[1.03]",
+          "bg-unyam-navy text-white shadow-[0_4px_14px_-4px_rgba(42,66,99,0.45)] hover:bg-unyam-navy/90 hover:scale-[1.03]",
         ghost:
-          "text-unyamo-ink-muted hover:bg-unyamo-cream hover:text-unyamo-ink aria-expanded:bg-unyamo-cream aria-expanded:text-unyamo-ink",
+          "text-unyam-ink-muted hover:bg-unyam-cream hover:text-unyam-ink aria-expanded:bg-unyam-cream aria-expanded:text-unyam-ink",
         destructive:
-          "bg-unyamo-red/10 text-unyamo-red border border-unyamo-red/20 hover:bg-unyamo-red/20 hover:scale-[1.03] focus-visible:border-unyamo-red/40 focus-visible:ring-unyamo-red/20 dark:bg-unyamo-red/20 dark:hover:bg-unyamo-red/30",
-        link: "rounded-none text-unyamo-green underline-offset-4 hover:underline",
+          "bg-unyam-red/10 text-unyam-red border border-unyam-red/20 hover:bg-unyam-red/20 hover:scale-[1.03] focus-visible:border-unyam-red/40 focus-visible:ring-unyam-red/20 dark:bg-unyam-red/20 dark:hover:bg-unyam-red/30",
+        link: "rounded-none text-unyam-green underline-offset-4 hover:underline",
       },
       size: {
         default: "h-10 gap-1.5 px-5 has-data-[icon=inline-end]:pr-3.5 has-data-[icon=inline-start]:pl-3.5",

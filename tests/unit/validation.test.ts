@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import {
   validateTurn, validatePhase, validateCardExists,
-  validateDiscardMultiple, validateUnyamo, validateDrawSource,
-  validateDiscardPickup, validateUnyamoNotYetDeclared,
+  validateDiscardMultiple, validateUnyam, validateDrawSource,
+  validateDiscardPickup, validateUnyamNotYetDeclared,
   validateDrawPhase, validateDiscardPhase, validateNoDuplicateAction,
   validateDiscardLeavesHand,
 } from '@/game-logic/validation'
@@ -26,7 +26,7 @@ const makeState = (overrides: Partial<GameState> = {}): GameState => ({
   discardPile: [makeCard(3)],
   currentTurnIndex: 0,
   turnOrder: ['player1', 'player2'],
-  unyamoDeclarerId: null,
+  unyamDeclarerId: null,
   remainingPlayersAfterDeclare: [],
   hostId: 'player1',
   roomConfig: { maxPlayers: 4, roomName: 'Test', isPrivate: false },
@@ -81,12 +81,12 @@ describe('validateDiscardMultiple', () => {
   })
 })
 
-describe('validateUnyamo', () => {
+describe('validateUnyam', () => {
   it('valid when score <= 5', () => {
-    expect(validateUnyamo([makeCard(2), makeCard(3)]).valid).toBe(true)
+    expect(validateUnyam([makeCard(2), makeCard(3)]).valid).toBe(true)
   })
   it('invalid when score > 5', () => {
-    expect(validateUnyamo([makeCard(3), makeCard(4)]).valid).toBe(false)
+    expect(validateUnyam([makeCard(3), makeCard(4)]).valid).toBe(false)
   })
 })
 
@@ -135,14 +135,14 @@ describe('validateDiscardPickup', () => {
   })
 })
 
-describe('validateUnyamoNotYetDeclared', () => {
+describe('validateUnyamNotYetDeclared', () => {
   it('valid when no one has declared yet', () => {
-    const r = validateUnyamoNotYetDeclared(makeState({ unyamoDeclarerId: null }))
+    const r = validateUnyamNotYetDeclared(makeState({ unyamDeclarerId: null }))
     expect(r.valid).toBe(true)
   })
 
   it('invalid when another player has already declared', () => {
-    const r = validateUnyamoNotYetDeclared(makeState({ unyamoDeclarerId: 'player1' }))
+    const r = validateUnyamNotYetDeclared(makeState({ unyamDeclarerId: 'player1' }))
     expect(r.valid).toBe(false)
     if (!r.valid) expect(r.code).toBe('UNYAMO_ALREADY_DECLARED')
   })

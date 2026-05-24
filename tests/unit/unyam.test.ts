@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { canDeclareUnyamo, judgeWinner } from '@/game-logic/unyamo'
+import { canDeclareUnyam, judgeWinner } from '@/game-logic/unyam'
 import type { Card } from '@/types/card'
 
 const makeCard = (rank: number, suit: Card['suit'] = 'spades'): Card => ({
@@ -8,15 +8,15 @@ const makeCard = (rank: number, suit: Card['suit'] = 'spades'): Card => ({
   rank,
 })
 
-describe('canDeclareUnyamo', () => {
+describe('canDeclareUnyam', () => {
   it('returns true when score <= 5', () => {
-    expect(canDeclareUnyamo([makeCard(1), makeCard(2), makeCard(0, 'joker')])).toBe(true)
+    expect(canDeclareUnyam([makeCard(1), makeCard(2), makeCard(0, 'joker')])).toBe(true)
   })
   it('returns true when score exactly 5', () => {
-    expect(canDeclareUnyamo([makeCard(2), makeCard(3)])).toBe(true)
+    expect(canDeclareUnyam([makeCard(2), makeCard(3)])).toBe(true)
   })
   it('returns false when score > 5', () => {
-    expect(canDeclareUnyamo([makeCard(3), makeCard(4)])).toBe(false)
+    expect(canDeclareUnyam([makeCard(3), makeCard(4)])).toBe(false)
   })
 })
 

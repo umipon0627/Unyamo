@@ -13,13 +13,13 @@ const mPlusRounded = M_PLUS_Rounded_1c({
 const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono' })
 
 export const metadata: Metadata = {
-  title: 'Unyamo',
-  description: 'オリジナルトランプゲーム Unyamo のオンライン対戦',
+  title: 'Unyam',
+  description: 'オリジナルトランプゲーム Unyam のオンライン対戦',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'Unyamo',
+    title: 'Unyam',
   },
   icons: {
     icon: [
@@ -50,8 +50,8 @@ export default function RootLayout({
     <html lang="ja" className={`${inter.variable} ${mPlusRounded.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
       <body className="font-sans bg-background text-foreground min-h-screen antialiased" suppressHydrationWarning>
         {/* テーマ復元: ハイドレーション前にlocalStorageのダーク設定を適用（FOUC回避）。静的文字列・ユーザー入力なし */}
-        <Script id="unyamo-theme-init" strategy="beforeInteractive">
-          {"try{if(localStorage.getItem('unyamo-theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}"}
+        <Script id="unyam-theme-init" strategy="beforeInteractive">
+          {"try{if(localStorage.getItem('unyam-theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}"}
         </Script>
         <SessionProviderWrapper>
           {children}

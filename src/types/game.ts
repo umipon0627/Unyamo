@@ -12,7 +12,7 @@ export interface PlayerState {
   /**
    * このターンでDRAW（山札/捨て札から引く）を完了したか。
    * 仕様 2.6節: ターンの流れは「DRAW_PHASE（引く/拾う）→ DISCARD_PHASE（捨てる）→ TURN_END」。
-   * - false: DRAW_PHASE（山札から引く / 捨て札から拾う）またはウニャモ宣言フェーズ
+   * - false: DRAW_PHASE（山札から引く / 捨て札から拾う）またはウニャム宣言フェーズ
    * - true:  DISCARD_PHASE（手札から1枚捨てる、または特殊操作で2-3枚捨てる）
    */
   hasDrawnThisTurn: boolean
@@ -31,7 +31,7 @@ export interface GameState {
   discardPile: Card[]
   currentTurnIndex: number
   turnOrder: string[]
-  unyamoDeclarerId: string | null
+  unyamDeclarerId: string | null
   remainingPlayersAfterDeclare: string[]
   hostId: string
   roomConfig: RoomConfig

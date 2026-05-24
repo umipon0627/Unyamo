@@ -60,7 +60,7 @@ test.describe('/play/cpu CPUセットアップ画面', () => {
     await page.getByRole('button', { name: /EASY/ }).click()
 
     const easyBtn = page.getByRole('button', { name: /EASY/ })
-    await expect(easyBtn).toHaveClass(/bg-unyamo-green/)
+    await expect(easyBtn).toHaveClass(/bg-unyam-green/)
   })
 })
 

@@ -38,23 +38,23 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 bg-unyamo-cream">
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 bg-unyam-cream">
       {/* ロゴ */}
       <div className="mb-8 text-center">
-        <p className="font-heading text-sm font-bold text-unyamo-ink-muted tracking-widest uppercase mb-1">
+        <p className="font-heading text-sm font-bold text-unyam-ink-muted tracking-widest uppercase mb-1">
           CARD GAME
         </p>
-        <h1 className="font-heading text-4xl font-extrabold text-unyamo-ink">
-          Unyamo
+        <h1 className="font-heading text-4xl font-extrabold text-unyam-ink">
+          Unyam
         </h1>
       </div>
 
-      <Card className="w-full max-w-sm bg-unyamo-surface border-2 border-unyamo-border shadow-[0_12px_40px_-8px_rgba(40,30,20,0.18)]">
+      <Card className="w-full max-w-sm bg-unyam-surface border-2 border-unyam-border shadow-[0_12px_40px_-8px_rgba(40,30,20,0.18)]">
         <CardHeader className="pb-2">
-          <h2 className="font-heading text-xl font-bold text-unyamo-ink text-center leading-snug">
+          <h2 className="font-heading text-xl font-bold text-unyam-ink text-center leading-snug">
             アカウントを連携して<br />はじめましょう。
           </h2>
-          <p className="text-sm text-unyamo-ink-muted text-center mt-1">
+          <p className="text-sm text-unyam-ink-muted text-center mt-1">
             ゲストでも無料ですぐ遊べます。戦績の保存はアカウント登録が必要です。
           </p>
         </CardHeader>
@@ -63,7 +63,7 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={() => signIn('google', { callbackUrl: '/lobby' })}
-            className="flex items-center gap-3 w-full h-12 rounded-2xl border-2 border-unyamo-border bg-unyamo-surface px-4 font-heading font-bold text-unyamo-ink text-sm hover:bg-unyamo-cream hover:border-unyamo-ink-muted transition-all active:scale-95 shadow-[0_3px_10px_-4px_rgba(40,30,20,0.12)]"
+            className="flex items-center gap-3 w-full h-12 rounded-2xl border-2 border-unyam-border bg-unyam-surface px-4 font-heading font-bold text-unyam-ink text-sm hover:bg-unyam-cream hover:border-unyam-ink-muted transition-all active:scale-95 shadow-[0_3px_10px_-4px_rgba(40,30,20,0.12)]"
           >
             {/* Google SVG icon */}
             <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
@@ -79,7 +79,7 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={() => signIn('github', { callbackUrl: '/lobby' })}
-            className="flex items-center gap-3 w-full h-12 rounded-2xl border-2 border-unyamo-border bg-unyamo-surface px-4 font-heading font-bold text-unyamo-ink text-sm hover:bg-unyamo-cream hover:border-unyamo-ink-muted transition-all active:scale-95 shadow-[0_3px_10px_-4px_rgba(40,30,20,0.12)]"
+            className="flex items-center gap-3 w-full h-12 rounded-2xl border-2 border-unyam-border bg-unyam-surface px-4 font-heading font-bold text-unyam-ink text-sm hover:bg-unyam-cream hover:border-unyam-ink-muted transition-all active:scale-95 shadow-[0_3px_10px_-4px_rgba(40,30,20,0.12)]"
           >
             {/* GitHub SVG icon */}
             <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -92,7 +92,7 @@ export default function LoginPage() {
           <div className="relative my-1">
             <Separator />
             <div className="absolute inset-0 flex items-center justify-center">
-              <span className="bg-unyamo-surface px-3 text-xs font-heading font-bold text-unyamo-ink-muted">
+              <span className="bg-unyam-surface px-3 text-xs font-heading font-bold text-unyam-ink-muted">
                 または
               </span>
             </div>
@@ -103,23 +103,23 @@ export default function LoginPage() {
             type="button"
             onClick={handleGuestPlay}
             disabled={loadingGuest}
-            className="flex items-center justify-center gap-2 w-full h-12 rounded-2xl font-heading font-bold text-sm text-unyamo-ink-muted hover:text-unyamo-ink transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
+            className="flex items-center justify-center gap-2 w-full h-12 rounded-2xl font-heading font-bold text-sm text-unyam-ink-muted hover:text-unyam-ink transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
           >
             {loadingGuest ? '準備中...' : 'ゲストで開始'}
           </button>
 
           {error && (
-            <p className="text-unyamo-red text-sm text-center font-heading font-bold bg-unyamo-red/10 border border-unyamo-red/20 rounded-xl px-3 py-2">
+            <p className="text-unyam-red text-sm text-center font-heading font-bold bg-unyam-red/10 border border-unyam-red/20 rounded-xl px-3 py-2">
               {error}
             </p>
           )}
 
           {/* 利用規約 */}
-          <p className="text-[11px] text-unyamo-ink-muted/60 text-center leading-relaxed mt-1">
+          <p className="text-[11px] text-unyam-ink-muted/60 text-center leading-relaxed mt-1">
             続けることで
-            <span className="underline underline-offset-2 cursor-pointer hover:text-unyamo-ink-muted">利用規約</span>
+            <span className="underline underline-offset-2 cursor-pointer hover:text-unyam-ink-muted">利用規約</span>
             ・
-            <span className="underline underline-offset-2 cursor-pointer hover:text-unyamo-ink-muted">プライバシーポリシー</span>
+            <span className="underline underline-offset-2 cursor-pointer hover:text-unyam-ink-muted">プライバシーポリシー</span>
             に同意します
           </p>
         </CardContent>

@@ -11,7 +11,7 @@ import { Deck } from './Deck'
 import { DiscardPile } from './DiscardPile'
 import { PlayerArea } from './PlayerArea'
 import { ActionPanel } from './ActionPanel'
-import { UnyamoButton } from './UnyamoButton'
+import { UnyamButton } from './UnyamButton'
 import { TurnIndicator } from './TurnIndicator'
 import { ResultModal } from './ResultModal'
 import { WaitingRoom } from './WaitingRoom'
@@ -25,9 +25,9 @@ interface GameBoardProps {
 
 export function GameBoard({ roomId, myPlayerId, token, roomName: roomNameProp }: GameBoardProps) {
   const router = useRouter()
-  const { gameState, myHand, discardTop, currentPlayerId, phase, isMyTurn, results, unyamoDeclarerId, availableActions, hostId, maxPlayers, roomName, players, canStartGame, handleMessage } = useGameState(myPlayerId)
+  const { gameState, myHand, discardTop, currentPlayerId, phase, isMyTurn, results, unyamDeclarerId, availableActions, hostId, maxPlayers, roomName, players, canStartGame, handleMessage } = useGameState(myPlayerId)
   const { status, send } = useWebSocket(roomId, token, handleMessage)
-  const { showUnyamoFlash, triggerUnyamoFlash } = useAnimation()
+  const { showUnyamFlash, triggerUnyamFlash } = useAnimation()
   const [selectedIndices, setSelectedIndices] = useState<number[]>([])
 
   // CPU対戦: 自動開始フラグ
@@ -107,10 +107,10 @@ export function GameBoard({ roomId, myPlayerId, token, roomName: roomNameProp }:
     send({ type: 'DRAW', payload: { source } })
   }, [send])
 
-  const handleDeclareUnyamo = useCallback(() => {
-    triggerUnyamoFlash()
+  const handleDeclareUnyam = useCallback(() => {
+    triggerUnyamFlash()
     send({ type: 'DECLARE_UNYAMO' })
-  }, [send, triggerUnyamoFlash])
+  }, [send, triggerUnyamFlash])
 
   const handlePlayAgain = useCallback(() => {
     if (isCpuRoom) {
@@ -125,7 +125,7 @@ export function GameBoard({ roomId, myPlayerId, token, roomName: roomNameProp }:
     router.push(backPath)
   }, [router, backPath])
 
-  // 仕様 2.6節: ターンは ACTION_PHASE（DISCARD or ウニャモ宣言） → DRAW_PHASE → TURN_END
+  // 仕様 2.6節: ターンは ACTION_PHASE（DISCARD or ウニャム宣言） → DRAW_PHASE → TURN_END
   const canDiscard = availableActions.includes('DISCARD') || availableActions.includes('DISCARD_MULTIPLE')
   const isDrawPhase = availableActions.includes('DRAW')
   const canDrawDeck = isDrawPhase && (gameState?.deckCount ?? 0) > 0
@@ -192,9 +192,9 @@ export function GameBoard({ roomId, myPlayerId, token, roomName: roomNameProp }:
 
   return (
     <div className="relative flex flex-col h-screen bg-felt overflow-hidden select-none">
-      {/* ウニャモ宣言フラッシュ（金色放射グロー） */}
+      {/* ウニャム宣言フラッシュ（金色放射グロー） */}
       <AnimatePresence>
-        {showUnyamoFlash && (
+        {showUnyamFlash && (
           <motion.div
             className="absolute inset-0 z-50 pointer-events-none"
             style={{
@@ -245,7 +245,7 @@ export function GameBoard({ roomId, myPlayerId, token, roomName: roomNameProp }:
               key={p.id}
               player={{ ...p, cardCount: p.cardCount, image: undefined }}
               isCurrentTurn={p.id === currentPlayerId}
-              hasDeclaredUnyamo={p.id === unyamoDeclarerId}
+              hasDeclaredUnyam={p.id === unyamDeclarerId}
               position="top"
               compact
             />
@@ -308,10 +308,10 @@ export function GameBoard({ roomId, myPlayerId, token, roomName: roomNameProp }:
               onDiscardMultiple={handleDiscardMultiple}
               discardTop={discardTop}
             />
-            <UnyamoButton
+            <UnyamButton
               canDeclare={canDeclare}
-              hasDeclared={myPlayerId === unyamoDeclarerId}
-              onDeclare={handleDeclareUnyamo}
+              hasDeclared={myPlayerId === unyamDeclarerId}
+              onDeclare={handleDeclareUnyam}
             />
           </div>
 

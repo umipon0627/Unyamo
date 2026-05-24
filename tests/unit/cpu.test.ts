@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { decideUnyamoDeclaration, decideDrawSource, decideDiscard } from '@/game-logic/cpu'
+import { decideUnyamDeclaration, decideDrawSource, decideDiscard } from '@/game-logic/cpu'
 import type { Card } from '@/types/card'
 
 // テスト用カードヘルパー
@@ -11,42 +11,42 @@ function makeJoker(id = 'joker-1'): Card {
   return { rank: 0, suit: 'joker', id }
 }
 
-describe('decideUnyamoDeclaration', () => {
+describe('decideUnyamDeclaration', () => {
   it('手札合計6点以上なら常に false', () => {
     const hand = [makeCard(3), makeCard(4)] // 7点
-    expect(decideUnyamoDeclaration(hand, 'HARD')).toBe(false)
-    expect(decideUnyamoDeclaration(hand, 'EASY')).toBe(false)
+    expect(decideUnyamDeclaration(hand, 'HARD')).toBe(false)
+    expect(decideUnyamDeclaration(hand, 'EASY')).toBe(false)
   })
 
   it('ちょうど6点なら false', () => {
     const hand = [makeCard(2), makeCard(4)] // 6点
-    expect(decideUnyamoDeclaration(hand, 'HARD')).toBe(false)
-    expect(decideUnyamoDeclaration(hand, 'EASY')).toBe(false)
+    expect(decideUnyamDeclaration(hand, 'HARD')).toBe(false)
+    expect(decideUnyamDeclaration(hand, 'EASY')).toBe(false)
   })
 
   it('手札合計5点以下 + HARD なら必ず true', () => {
     const hand = [makeCard(2), makeCard(3)] // 5点
-    expect(decideUnyamoDeclaration(hand, 'HARD')).toBe(true)
+    expect(decideUnyamDeclaration(hand, 'HARD')).toBe(true)
   })
 
   it('手札合計0点(ジョーカーのみ) + HARD なら true', () => {
     const hand = [makeJoker()]
-    expect(decideUnyamoDeclaration(hand, 'HARD')).toBe(true)
+    expect(decideUnyamDeclaration(hand, 'HARD')).toBe(true)
   })
 
   it('手札合計5点以下 + EASY + rng=()=>0.4 なら true', () => {
     const hand = [makeCard(1), makeCard(2)] // 3点
-    expect(decideUnyamoDeclaration(hand, 'EASY', () => 0.4)).toBe(true)
+    expect(decideUnyamDeclaration(hand, 'EASY', () => 0.4)).toBe(true)
   })
 
   it('手札合計5点以下 + EASY + rng=()=>0.5 なら false（0.5は境界値）', () => {
     const hand = [makeCard(1), makeCard(2)] // 3点
-    expect(decideUnyamoDeclaration(hand, 'EASY', () => 0.5)).toBe(false)
+    expect(decideUnyamDeclaration(hand, 'EASY', () => 0.5)).toBe(false)
   })
 
   it('手札合計5点以下 + EASY + rng=()=>0.9 なら false', () => {
     const hand = [makeCard(1), makeCard(2)] // 3点
-    expect(decideUnyamoDeclaration(hand, 'EASY', () => 0.9)).toBe(false)
+    expect(decideUnyamDeclaration(hand, 'EASY', () => 0.9)).toBe(false)
   })
 })
 

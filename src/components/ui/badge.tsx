@@ -10,20 +10,20 @@ const badgeVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-unyamo-green text-unyamo-cream shadow-sm [a]:hover:bg-unyamo-green/90",
+          "bg-unyam-green text-unyam-cream shadow-sm [a]:hover:bg-unyam-green/90",
         secondary:
-          "bg-unyamo-cream text-unyamo-ink border border-unyamo-border [a]:hover:bg-unyamo-border/50",
+          "bg-unyam-cream text-unyam-ink border border-unyam-border [a]:hover:bg-unyam-border/50",
         destructive:
-          "bg-unyamo-red/10 text-unyamo-red border border-unyamo-red/20 focus-visible:ring-unyamo-red/20 dark:bg-unyamo-red/20 dark:focus-visible:ring-unyamo-red/40 [a]:hover:bg-unyamo-red/20",
+          "bg-unyam-red/10 text-unyam-red border border-unyam-red/20 focus-visible:ring-unyam-red/20 dark:bg-unyam-red/20 dark:focus-visible:ring-unyam-red/40 [a]:hover:bg-unyam-red/20",
         outline:
-          "border-2 border-unyamo-border text-unyamo-ink [a]:hover:bg-unyamo-cream",
+          "border-2 border-unyam-border text-unyam-ink [a]:hover:bg-unyam-cream",
         ghost:
-          "hover:bg-unyamo-cream hover:text-unyamo-ink dark:hover:bg-muted/50",
-        link: "text-unyamo-green underline-offset-4 hover:underline",
+          "hover:bg-unyam-cream hover:text-unyam-ink dark:hover:bg-muted/50",
+        link: "text-unyam-green underline-offset-4 hover:underline",
         gold:
-          "bg-unyamo-gold text-unyamo-ink shadow-sm [a]:hover:bg-unyamo-gold/90",
+          "bg-unyam-gold text-unyam-ink shadow-sm [a]:hover:bg-unyam-gold/90",
         navy:
-          "bg-unyamo-navy text-white shadow-sm [a]:hover:bg-unyamo-navy/90",
+          "bg-unyam-navy text-white shadow-sm [a]:hover:bg-unyam-navy/90",
       },
     },
     defaultVariants: {

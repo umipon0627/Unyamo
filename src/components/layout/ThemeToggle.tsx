@@ -28,7 +28,7 @@ export default function ThemeToggle() {
   const toggle = useCallback(() => {
     const isDark = document.documentElement.classList.toggle('dark')
     try {
-      localStorage.setItem('unyamo-theme', isDark ? 'dark' : 'light')
+      localStorage.setItem('unyam-theme', isDark ? 'dark' : 'light')
     } catch {
       /* localStorage 利用不可環境は無視 */
     }
@@ -43,7 +43,7 @@ export default function ThemeToggle() {
       onClick={toggle}
       aria-label="テーマを切り替え"
       aria-pressed={false}
-      className="w-8 h-8 rounded-full flex items-center justify-center border-2 border-unyamo-border bg-unyamo-surface hover:bg-unyamo-cream transition-colors text-base select-none"
+      className="w-8 h-8 rounded-full flex items-center justify-center border-2 border-unyam-border bg-unyam-surface hover:bg-unyam-cream transition-colors text-base select-none"
     >
       🌙
     </button>

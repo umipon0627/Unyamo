@@ -79,7 +79,7 @@ export function ResultModal({ open, results, myPlayerId, isHost, onPlayAgain, on
           // shadcn の Dialog（fixed top-1/2 -translate-y-1/2）は iOS PWA で
           // 縦長コンテンツのとき viewport をはみ出して下にずれる事象があったため、
           // ここで `items-center justify-center` + `max-h` + 内側スクロールに統一する。
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-unyamo-ink/30 supports-backdrop-filter:backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-unyam-ink/30 supports-backdrop-filter:backdrop-blur-sm"
           style={{
             paddingTop: 'max(1rem, env(safe-area-inset-top))',
             paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
@@ -127,7 +127,7 @@ export function ResultModal({ open, results, myPlayerId, isHost, onPlayAgain, on
                       Winner — {winner.playerName}
                     </h2>
                     {winner.declared && (
-                      <p className="text-sm text-[#7a6a52]">ウニャモ宣言で勝利しました</p>
+                      <p className="text-sm text-[#7a6a52]">ウニャム宣言で勝利しました</p>
                     )}
                   </div>
                 )}
@@ -181,7 +181,7 @@ export function ResultModal({ open, results, myPlayerId, isHost, onPlayAgain, on
                   )}
                 </div>
                 <p className="text-[10px] text-[#7a6a52]">
-                  {r.declared ? `ウニャモ宣言・手札${r.hand.length}枚` : `残り手札${r.hand.length}枚`}
+                  {r.declared ? `ウニャム宣言・手札${r.hand.length}枚` : `残り手札${r.hand.length}枚`}
                 </p>
               </div>
               {/* 得点 */}

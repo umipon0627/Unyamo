@@ -1,7 +1,7 @@
 import type { GameState } from '../src/types/game'
 import type { ClientGameStatePayload } from './messages'
 import { calculateHandScore } from '../src/game-logic/scoring'
-import { canDeclareUnyamo } from '../src/game-logic/unyamo'
+import { canDeclareUnyam } from '../src/game-logic/unyam'
 import { escapeHtml } from './utils'
 
 export function projectStateForPlayer(
@@ -13,14 +13,14 @@ export function projectStateForPlayer(
 
   const availableActions: string[] = []
   const currentPlayerId = state.turnOrder[state.currentTurnIndex]
-  // 仕様 2.6節: ターンの流れは [ウニャモ宣言 or DRAW] → DISCARD → ターン終了。
-  // ウニャモ宣言はターン開始時（まだ引いていない時）にのみ可能で、
+  // 仕様 2.6節: ターンの流れは [ウニャム宣言 or DRAW] → DISCARD → ターン終了。
+  // ウニャム宣言はターン開始時（まだ引いていない時）にのみ可能で、
   // すでに誰かが宣言済みなら不可。
   if (currentPlayerId === playerId && state.phase === 'PLAYING') {
     if (!me?.hasDrawnThisTurn) {
-      // DRAW_PHASE: 山札から引く / 捨て札から拾う / ウニャモ宣言
+      // DRAW_PHASE: 山札から引く / 捨て札から拾う / ウニャム宣言
       availableActions.push('DRAW')
-      if (canDeclareUnyamo(myHand) && state.unyamoDeclarerId === null) {
+      if (canDeclareUnyam(myHand) && state.unyamDeclarerId === null) {
         availableActions.push('DECLARE_UNYAMO')
       }
     } else if (!me?.hasDiscardedThisTurn) {
@@ -61,7 +61,7 @@ export function projectStateForPlayer(
     deckCount: state.deck.length,
     currentTurnPlayerId: currentPlayerId ?? '',
     myTotalScore: calculateHandScore(myHand),
-    canDeclareUnyamo: canDeclareUnyamo(myHand) && state.unyamoDeclarerId === null,
+    canDeclareUnyam: canDeclareUnyam(myHand) && state.unyamDeclarerId === null,
     availableActions,
     hostId: state.hostId,
     maxPlayers: state.roomConfig.maxPlayers,

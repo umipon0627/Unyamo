@@ -29,7 +29,7 @@ export default function Footer() {
     <>
       {/* モバイル下部タブバー（md未満で表示） */}
       <nav
-        className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-unyamo-surface border-t-2 border-unyamo-border shadow-[0_-4px_16px_-4px_rgba(40,30,20,0.12)]"
+        className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-unyam-surface border-t-2 border-unyam-border shadow-[0_-4px_16px_-4px_rgba(40,30,20,0.12)]"
         aria-label="メインナビゲーション"
       >
         <div className="flex h-16">
@@ -41,21 +41,21 @@ export default function Footer() {
                 href={item.href}
                 className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors ${
                   active
-                    ? 'text-unyamo-green'
-                    : 'text-unyamo-ink-muted hover:text-unyamo-ink'
+                    ? 'text-unyam-green'
+                    : 'text-unyam-ink-muted hover:text-unyam-ink'
                 }`}
                 aria-current={active ? 'page' : undefined}
               >
                 <span className="text-xl leading-none">{item.icon}</span>
                 <span
                   className={`text-xs font-heading font-bold ${
-                    active ? 'text-unyamo-green' : 'text-unyamo-ink-muted'
+                    active ? 'text-unyam-green' : 'text-unyam-ink-muted'
                   }`}
                 >
                   {item.label}
                 </span>
                 {active && (
-                  <span className="absolute bottom-1 w-5 h-0.5 rounded-full bg-unyamo-green" />
+                  <span className="absolute bottom-1 w-5 h-0.5 rounded-full bg-unyam-green" />
                 )}
               </Link>
             )
@@ -64,10 +64,10 @@ export default function Footer() {
       </nav>
 
       {/* デスクトップフッター（md以上で表示） */}
-      <footer className="hidden md:block border-t-2 border-unyamo-border bg-unyamo-surface py-5 pb-5">
+      <footer className="hidden md:block border-t-2 border-unyam-border bg-unyam-surface py-5 pb-5">
         <div className="max-w-6xl mx-auto px-4 flex items-center justify-between">
-          <p className="text-sm font-heading text-unyamo-ink-muted">
-            © 2024 Unyamo
+          <p className="text-sm font-heading text-unyam-ink-muted">
+            © 2024 Unyam
           </p>
           <nav className="flex items-center gap-6" aria-label="フッターナビゲーション">
             {tabItems.map((item) => {
@@ -78,8 +78,8 @@ export default function Footer() {
                   href={item.href}
                   className={`flex items-center gap-1.5 text-sm font-heading font-bold transition-colors ${
                     active
-                      ? 'text-unyamo-green'
-                      : 'text-unyamo-ink-muted hover:text-unyamo-ink'
+                      ? 'text-unyam-green'
+                      : 'text-unyam-ink-muted hover:text-unyam-ink'
                   }`}
                   aria-current={active ? 'page' : undefined}
                 >

@@ -1,8 +1,8 @@
-# Unyamo 開発セッション記録（2026-05-06 ～ 2026-05-24）
+# Unyam 開発セッション記録（2026-05-06 ～ 2026-05-24）
 
 CLIからGUIのClaudeデスクトップアプリへ切り替えるための詳細な開発履歴です。
 
-> **⚠️ エージェントへの注意 — このファイルは履歴ログです。現状の正は `README.md` / `CLAUDE.md` / `unyamo-specification.md` / ソースコード を参照すること。**
+> **⚠️ エージェントへの注意 — このファイルは履歴ログです。現状の正は `README.md` / `CLAUDE.md` / `unyam-specification.md` / ソースコード を参照すること。**
 >
 > 特に以下は古い記述があり、現在の挙動と矛盾します:
 > - 「ターン順序を DRAW→DISCARD から DISCARD→DRAW へ変更」: **その後 DRAW→DISCARD に戻している**（`party/projection.ts` 参照）
@@ -15,7 +15,7 @@ CLIからGUIのClaudeデスクトップアプリへ切り替えるための詳�
 |------|---|
 | 人数 | 2〜5人 |
 | ターン順序 | DRAW → DISCARD |
-| ウニャモ宣言 | 自ターン開始時、ドロー前のみ。同一ゲーム内で一度のみ。手札合計 5点以下 |
+| ウニャム宣言 | 自ターン開始時、ドロー前のみ。同一ゲーム内で一度のみ。手札合計 5点以下 |
 | ルーム ID | 4文字英数字（混同しにくい 32種から）。衝突時 5文字フォールバック |
 | 認証 | NextAuth v5 + PrismaAdapter + JWT |
 | DB 接続 | Supabase Transaction Pooler `aws-1-ap-northeast-1.pooler.supabase.com:6543` (`?pgbouncer=true&connection_limit=1`) |
@@ -40,7 +40,7 @@ CLIからGUIのClaudeデスクトップアプリへ切り替えるための詳�
 1. **CPU対戦機能** の追加（新機能）
 2. **OAuth redirect_uri_mismatch エラー** の原因特定と対応方法の案内
 3. **捨て札ルール** の修正（仕様適合）
-4. **Unyamo二重宣言禁止** ルールの追加
+4. **Unyam二重宣言禁止** ルールの追加
 5. **ターン順序の変更** （DRAW→DISCARD から DISCARD→DRAW へ）
 6. **リザルト画面の全プレイヤー対応**
 
@@ -69,7 +69,7 @@ CLIからGUIのClaudeデスクトップアプリへ切り替えるための詳�
 
 #### 新規作成
 - `src/game-logic/cpu.ts` — CPU判断ロジック（純粋関数）
-  - `decideUnyamoDeclaration(hand, difficulty, rng?)` — Unyamo宣言の判断
+  - `decideUnyamDeclaration(hand, difficulty, rng?)` — Unyam宣言の判断
   - `decideDrawSource(hand, discardTop, canPickupFromDiscard, difficulty, rng?)` — 山札/捨札の選択
   - `decideDiscard(hand, difficulty, rng?)` — どのカードを捨てるか決定
 - `src/app/(game)/play/page.tsx` — モード選択画面（Bot/Users アイコン付き）
@@ -130,15 +130,15 @@ URL: https://console.cloud.google.com/apis/credentials
   ```
   http://localhost:3000/api/auth/callback/google
   https://unyamo.vercel.app/api/auth/callback/google
-  https://unyamo-umipon0627s-projects.vercel.app/api/auth/callback/google
-  https://unyamo-git-main-umipon0627s-projects.vercel.app/api/auth/callback/google
+  https://unyam-umipon0627s-projects.vercel.app/api/auth/callback/google
+  https://unyam-git-main-umipon0627s-projects.vercel.app/api/auth/callback/google
   ```
 
 #### GitHub OAuth Apps
 URL: https://github.com/settings/developers
 - Client ID: `Ov23liXyCeu3Z8QXrwIk`
 - **重要**: GitHub は callback URL が1つのみのため、**localhost 用に別 OAuth App を作成推奨**
-  1. 新 OAuth App 作成（例: Unyamo Dev）
+  1. 新 OAuth App 作成（例: Unyam Dev）
   2. Authorization callback URL: `http://localhost:3000/api/auth/callback/github`
   3. 新しい Client ID/Secret を `.env.local` に設定
   4. 本番用は既存 App のまま `https://unyamo.vercel.app/api/auth/callback/github` に設定
@@ -172,24 +172,24 @@ GITHUB_CLIENT_SECRET=（localhost用に変更可）
 - テスト: 既存・新規テスト追加・修正
 
 ### 問題ケース（修正済み）
-前プレイヤーが Unyamo を宣言 → 捨て札が発生しない → その直後のターンで捨て札が拾えない
+前プレイヤーが Unyam を宣言 → 捨て札が発生しない → その直後のターンで捨て札が拾えない
 → **修正後**: 他プレイヤーが捨てたカードトップなら拾える
 
-**コミット**: `b0dd2e1` fix: 捨て札ピックアップ・ウニャモ宣言ルールを仕様準拠に修正
+**コミット**: `b0dd2e1` fix: 捨て札ピックアップ・ウニャム宣言ルールを仕様準拠に修正
 
 ---
 
-## 4. Unyamo二重宣言禁止
+## 4. Unyam二重宣言禁止
 
 ### ルール追加
-- 一人の プレイヤーが Unyamo を宣言したら、他のプレイヤーは Unyamo を宣言できない
+- 一人の プレイヤーが Unyam を宣言したら、他のプレイヤーは Unyam を宣言できない
 
 ### 実装
-- `src/game-logic/validation.ts` — `validateUnyamoNotYetDeclared()` 新設
-- `party/game-server.ts` — Unyamo 処理で検証呼び出し
+- `src/game-logic/validation.ts` — `validateUnyamNotYetDeclared()` 新設
+- `party/game-server.ts` — Unyam 処理で検証呼び出し
 - テスト: 2件追加
 
-**コミット**: `b0dd2e1` fix: 捨て札ピックアップ・ウニャモ宣言ルールを仕様準拠に修正
+**コミット**: `b0dd2e1` fix: 捨て札ピックアップ・ウニャム宣言ルールを仕様準拠に修正
 
 ---
 
@@ -233,7 +233,7 @@ GITHUB_CLIENT_SECRET=（localhost用に変更可）
 ## 6. リザルト画面の全プレイヤー対応
 
 ### 変更前
-Unyamo を宣言したプレイヤーのみリザルト画面（`/result/[id]`）に遷移。他プレイヤーは勝敗不明。
+Unyam を宣言したプレイヤーのみリザルト画面（`/result/[id]`）に遷移。他プレイヤーは勝敗不明。
 
 ### 変更後
 - **ゲーム終了時に全プレイヤーに GAME_RESULT メッセージを broadcast**
@@ -256,7 +256,7 @@ Unyamo を宣言したプレイヤーのみリザルト画面（`/result/[id]`�
 - `src/components/game/GameBoard.tsx` — `handlePlayAgain()`, `handleExit()` 実装
   - CPUルーム: `cpuLastConfigRef` で同じ設定を保持
   - WAITING 遷移後に自動で `START_CPU_GAME` 再送信
-- `src/hooks/useGameState.ts` — RESULT→WAITING 時に `results`, `unyamoDeclarerId` クリア
+- `src/hooks/useGameState.ts` — RESULT→WAITING 時に `results`, `unyamDeclarerId` クリア
 - `src/app/(game)/result/[id]/page.tsx` — リンクラベル統一
 
 ### テスト
@@ -292,7 +292,7 @@ Unyamo を宣言したプレイヤーのみリザルト画面（`/result/[id]`�
 
 ### PartyKit
 - **デプロイ**: `npx partykit deploy` で本番反映
-- **URL**: https://unyamo.umipon0627.partykit.dev
+- **URL**: https://unyam.umipon0627.partykit.dev
 - **ホスト環境変数**: Vercel に `PARTYKIT_HOST` 設定済み
 
 ### Supabase
@@ -370,7 +370,7 @@ Unyamo を宣言したプレイヤーのみリザルト画面（`/result/[id]`�
 
 ```
 37cc89b fix: ターン順序をDISCARD→DRAWに修正、リザルト画面を全プレイヤー対応
-b0dd2e1 fix: 捨て札ピックアップ・ウニャモ宣言ルールを仕様準拠に修正
+b0dd2e1 fix: 捨て札ピックアップ・ウニャム宣言ルールを仕様準拠に修正
 b2f603b fix: CPU対戦のゲーム結果API保存からcpuプレイヤーを除外
 926e55e feat: CPU対戦機能を追加（モード選択画面・CPUロジック・自動実行）
 ```
@@ -380,7 +380,7 @@ b2f603b fix: CPU対戦のゲーム結果API保存からcpuプレイヤーを除�
 ## ファイル構成参考
 
 ```
-Unyamo/
+Unyam/
 ├── src/
 │   ├── game-logic/
 │   │   ├── cpu.ts                      ← CPU判断ロジック（新規）
@@ -418,5 +418,5 @@ Unyamo/
 │   └── e2e/
 │       ├── cpu-battle.test.ts          ← CPU対戦 E2E（新規）
 │       └── guest-flow.test.ts
-└── unyamo-specification.md
+└── unyam-specification.md
 ```

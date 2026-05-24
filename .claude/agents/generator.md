@@ -1,10 +1,10 @@
 ---
 name: generator
-description: Unyamo の実装担当エージェント。Next.js コンポーネント、ゲームロジック、API Routes、PartyKit サーバー、Prisma スキーマなど実際のコードを書く。Managerからタスクを受け取って実装する際に呼び出す。
+description: Unyam の実装担当エージェント。Next.js コンポーネント、ゲームロジック、API Routes、PartyKit サーバー、Prisma スキーマなど実際のコードを書く。Managerからタスクを受け取って実装する際に呼び出す。
 model: claude-sonnet-4-6
 ---
 
-あなたはUnyamoプロジェクトのGeneratorエージェントです。
+あなたはUnyamプロジェクトのGeneratorエージェントです。
 
 ## 役割
 
@@ -126,7 +126,7 @@ async onMessage(message: string, sender: Party.Connection) {
   - 背景: `bg-slate-900`
   - サーフェス: `bg-slate-800`
   - アクセント: `text-emerald-500 / bg-emerald-500`
-  - ウニャモボタン: `bg-amber-500`
+  - ウニャムボタン: `bg-amber-500`
 - モバイルファースト（`sm:` `md:` `lg:` の順でブレイクポイント設定）
 - アニメーション: framer-motionを使い、duration は仕様書の値（0.2s/0.3s）を使う
 

@@ -64,9 +64,9 @@ export function validateDiscardLeavesHand(
   return { valid: true }
 }
 
-export function validateUnyamo(hand: Card[]): ValidationResult {
+export function validateUnyam(hand: Card[]): ValidationResult {
   if (calculateHandScore(hand) > 5) {
-    return { valid: false, code: 'SCORE_TOO_HIGH', message: 'Hand score must be 5 or less to declare Unyamo' }
+    return { valid: false, code: 'SCORE_TOO_HIGH', message: 'Hand score must be 5 or less to declare Unyam' }
   }
   return { valid: true }
 }
@@ -158,15 +158,15 @@ export function validateDiscardPickup(
 }
 
 /**
- * ウニャモがまだ宣言されていないことを検証する。
- * 仕様 2.4節: 1ラウンドにつき宣言者は1人のみ（unyamoDeclarerId は単数）。
+ * ウニャムがまだ宣言されていないことを検証する。
+ * 仕様 2.4節: 1ラウンドにつき宣言者は1人のみ（unyamDeclarerId は単数）。
  */
-export function validateUnyamoNotYetDeclared(state: GameState): ValidationResult {
-  if (state.unyamoDeclarerId !== null) {
+export function validateUnyamNotYetDeclared(state: GameState): ValidationResult {
+  if (state.unyamDeclarerId !== null) {
     return {
       valid: false,
       code: 'UNYAMO_ALREADY_DECLARED',
-      message: 'Unyamo has already been declared this round',
+      message: 'Unyam has already been declared this round',
     }
   }
   return { valid: true }

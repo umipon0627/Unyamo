@@ -13,7 +13,7 @@ export const drawSchema = z.object({
   type: z.literal('DRAW'),
   payload: z.object({ source: z.enum(['deck', 'discard']) })
 })
-export const declareUnyamoSchema = z.object({ type: z.literal('DECLARE_UNYAMO') })
+export const declareUnyamSchema = z.object({ type: z.literal('DECLARE_UNYAMO') })
 export const reconnectSchema = z.object({ type: z.literal('RECONNECT'), payload: z.object({ token: z.string() }) })
 export const startCpuGameSchema = z.object({
   type: z.literal('START_CPU_GAME'),
@@ -27,7 +27,7 @@ export const restartGameSchema = z.object({ type: z.literal('RESTART_GAME') })
 
 export const clientMessageSchema = z.discriminatedUnion('type', [
   joinSchema, startGameSchema, discardSchema, discardMultipleSchema,
-  drawSchema, declareUnyamoSchema, reconnectSchema, startCpuGameSchema,
+  drawSchema, declareUnyamSchema, reconnectSchema, startCpuGameSchema,
   restartGameSchema,
 ])
 
@@ -61,7 +61,7 @@ export interface ClientGameStatePayload {
   deckCount: number
   currentTurnPlayerId: string
   myTotalScore: number
-  canDeclareUnyamo: boolean
+  canDeclareUnyam: boolean
   availableActions: string[]
   // 待機画面用フィールド
   hostId: string

@@ -7,7 +7,7 @@ import type { Card } from '@/types/card'
 interface LocalGameState {
   gameState: ClientGameStatePayload | null
   results: { results: { playerId: string; playerName: string; hand: Card[]; totalScore: number; rank: number; declared: boolean; isWinner: boolean }[] } | null
-  unyamoDeclarerId: string | null
+  unyamDeclarerId: string | null
   currentPlayerId: string | null
   phase: string
 }
@@ -28,11 +28,11 @@ function reducer(state: LocalGameState, action: Action): LocalGameState {
         gameState: action.payload,
         currentPlayerId: action.payload.currentTurnPlayerId,
         phase: action.payload.phase,
-        ...(isReset ? { results: null, unyamoDeclarerId: null } : {}),
+        ...(isReset ? { results: null, unyamDeclarerId: null } : {}),
       }
     }
     case 'UNYAMO_DECLARED':
-      return { ...state, unyamoDeclarerId: action.payload.playerId }
+      return { ...state, unyamDeclarerId: action.payload.playerId }
     case 'GAME_RESULT':
       return { ...state, results: action.payload, phase: 'RESULT' }
     case 'RESET':
@@ -45,7 +45,7 @@ function reducer(state: LocalGameState, action: Action): LocalGameState {
 const initialState: LocalGameState = {
   gameState: null,
   results: null,
-  unyamoDeclarerId: null,
+  unyamDeclarerId: null,
   currentPlayerId: null,
   phase: 'WAITING',
 }
@@ -81,7 +81,7 @@ export function useGameState(myPlayerId: string) {
     phase: state.phase,
     isMyTurn,
     results: state.results,
-    unyamoDeclarerId: state.unyamoDeclarerId,
+    unyamDeclarerId: state.unyamDeclarerId,
     availableActions: state.gameState?.availableActions ?? [],
     // 待機画面用フィールド
     hostId: state.gameState?.hostId ?? '',

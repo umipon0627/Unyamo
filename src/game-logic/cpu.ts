@@ -4,11 +4,11 @@ import { calculateHandScore, getCardScore } from './scoring'
 export type CpuDifficulty = 'EASY' | 'HARD'
 
 /**
- * ウニャモ宣言するかを判定する純粋関数。
+ * ウニャム宣言するかを判定する純粋関数。
  * EASY: 手札合計5点以下なら rng()<0.5 で true
  * HARD: 手札合計5点以下なら必ず true
  */
-export function decideUnyamoDeclaration(
+export function decideUnyamDeclaration(
   hand: Card[],
   difficulty: CpuDifficulty,
   rng: () => number = Math.random

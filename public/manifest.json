@@ -1,7 +1,7 @@
 {
-  "name": "Unyamo - オンライントランプゲーム",
-  "short_name": "Unyamo",
-  "description": "オリジナルトランプゲーム Unyamo のオンライン対戦",
+  "name": "Unyam - オンライントランプゲーム",
+  "short_name": "Unyam",
+  "description": "オリジナルトランプゲーム Unyam のオンライン対戦",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

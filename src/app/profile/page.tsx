@@ -76,30 +76,30 @@ export default async function ProfilePage() {
   const avatarInitial = user.name[0]?.toUpperCase() ?? 'U'
 
   return (
-    <div className="flex flex-col min-h-screen bg-unyamo-cream">
+    <div className="flex flex-col min-h-screen bg-unyam-cream">
       <Header />
       <main className="max-w-2xl mx-auto w-full px-4 py-8 space-y-5">
         {/* ページ見出し */}
         <div>
-          <h1 className="font-heading text-2xl font-bold text-unyamo-ink">プロフィール</h1>
-          <p className="text-sm font-heading text-unyamo-ink-muted mt-0.5">STATS · HISTORY</p>
+          <h1 className="font-heading text-2xl font-bold text-unyam-ink">プロフィール</h1>
+          <p className="text-sm font-heading text-unyam-ink-muted mt-0.5">STATS · HISTORY</p>
         </div>
 
         {/* プロフィールカード */}
-        <div className="bg-unyamo-surface border-2 border-unyamo-border rounded-3xl p-6 shadow-[0_6px_20px_-6px_rgba(40,30,20,0.12)]">
+        <div className="bg-unyam-surface border-2 border-unyam-border rounded-3xl p-6 shadow-[0_6px_20px_-6px_rgba(40,30,20,0.12)]">
           <div className="flex items-center gap-5">
             {/* アバター */}
             <div className="relative flex-shrink-0">
-              <Avatar className="h-16 w-16 border-2 border-unyamo-gold ring-2 ring-unyamo-gold-soft">
+              <Avatar className="h-16 w-16 border-2 border-unyam-gold ring-2 ring-unyam-gold-soft">
                 {!user.isGuest && user.image && (
                   <AvatarImage src={user.image} />
                 )}
-                <AvatarFallback className="font-heading font-extrabold text-2xl bg-unyamo-green text-unyamo-cream">
+                <AvatarFallback className="font-heading font-extrabold text-2xl bg-unyam-green text-unyam-cream">
                   {avatarInitial}
                 </AvatarFallback>
               </Avatar>
               {user.isGuest && (
-                <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-unyamo-gold flex items-center justify-center text-xs">
+                <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-unyam-gold flex items-center justify-center text-xs">
                   G
                 </span>
               )}
@@ -107,21 +107,21 @@ export default async function ProfilePage() {
 
             {/* ユーザー情報 */}
             <div className="flex-1 min-w-0">
-              <p className="font-heading text-xl font-extrabold text-unyamo-ink truncate">
+              <p className="font-heading text-xl font-extrabold text-unyam-ink truncate">
                 {user.name}
               </p>
               {user.email && (
-                <p className="font-heading text-sm text-unyamo-ink-muted truncate">
+                <p className="font-heading text-sm text-unyam-ink-muted truncate">
                   {user.email}
                 </p>
               )}
               {user.isGuest ? (
-                <span className="inline-block mt-1.5 px-3 py-0.5 rounded-full bg-unyamo-gold-soft border border-unyamo-gold/40 text-xs font-heading font-bold text-unyamo-gold-deep">
+                <span className="inline-block mt-1.5 px-3 py-0.5 rounded-full bg-unyam-gold-soft border border-unyam-gold/40 text-xs font-heading font-bold text-unyam-gold-deep">
                   ゲストユーザー
                 </span>
               ) : stats && (
                 <div className="flex items-center gap-2 mt-1.5">
-                  <span className="inline-block px-3 py-0.5 rounded-full bg-unyamo-cream border border-unyamo-border text-xs font-heading font-bold text-unyamo-ink-muted">
+                  <span className="inline-block px-3 py-0.5 rounded-full bg-unyam-cream border border-unyam-border text-xs font-heading font-bold text-unyam-ink-muted">
                     🏆 {stats.gamesPlayed} GAMES
                   </span>
                 </div>
@@ -132,17 +132,17 @@ export default async function ProfilePage() {
 
         {/* 戦績エリア */}
         {user.isGuest ? (
-          <div className="bg-unyamo-surface border-2 border-unyamo-border rounded-3xl p-6 shadow-[0_6px_20px_-6px_rgba(40,30,20,0.12)] text-center">
+          <div className="bg-unyam-surface border-2 border-unyam-border rounded-3xl p-6 shadow-[0_6px_20px_-6px_rgba(40,30,20,0.12)] text-center">
             <p className="text-4xl mb-3">📊</p>
-            <p className="font-heading font-bold text-unyamo-ink mb-1">戦績は記録されません</p>
-            <p className="text-sm text-unyamo-ink-muted">
+            <p className="font-heading font-bold text-unyam-ink mb-1">戦績は記録されません</p>
+            <p className="text-sm text-unyam-ink-muted">
               アカウント登録すると戦績が保存されます
             </p>
           </div>
         ) : stats === null ? (
-          <div className="bg-unyamo-surface border-2 border-unyamo-border rounded-3xl p-6 shadow-[0_6px_20px_-6px_rgba(40,30,20,0.12)] text-center">
+          <div className="bg-unyam-surface border-2 border-unyam-border rounded-3xl p-6 shadow-[0_6px_20px_-6px_rgba(40,30,20,0.12)] text-center">
             <p className="text-4xl mb-3">⚠️</p>
-            <p className="font-heading font-bold text-unyamo-ink">
+            <p className="font-heading font-bold text-unyam-ink">
               戦績の取得に失敗しました
             </p>
           </div>
@@ -153,30 +153,30 @@ export default async function ProfilePage() {
               <StatCard
                 label="WIN"
                 value={stats.gamesWon}
-                colorClass="bg-unyamo-green text-unyamo-cream"
+                colorClass="bg-unyam-green text-unyam-cream"
               />
               <StatCard
                 label="LOSE"
                 value={stats.gamesLost}
-                colorClass="bg-unyamo-red text-white"
+                colorClass="bg-unyam-red text-white"
               />
               <StatCard
                 label="勝率"
                 value={`${stats.winRate}%`}
-                colorClass="bg-unyamo-gold text-unyamo-ink"
+                colorClass="bg-unyam-gold text-unyam-ink"
               />
             </div>
 
             {/* スコア推移カード */}
-            <div className="bg-unyamo-surface border-2 border-unyamo-border rounded-3xl p-5 shadow-[0_6px_20px_-6px_rgba(40,30,20,0.12)]">
+            <div className="bg-unyam-surface border-2 border-unyam-border rounded-3xl p-5 shadow-[0_6px_20px_-6px_rgba(40,30,20,0.12)]">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <p className="font-heading font-bold text-unyamo-ink text-sm">スコア推移</p>
-                  <p className="text-xs font-heading text-unyamo-ink-muted">LAST 10</p>
+                  <p className="font-heading font-bold text-unyam-ink text-sm">スコア推移</p>
+                  <p className="text-xs font-heading text-unyam-ink-muted">LAST 10</p>
                 </div>
                 <div className="text-right">
-                  <p className="font-heading font-bold text-unyamo-ink-muted text-xs">累計スコア</p>
-                  <p className="font-heading font-extrabold text-xl text-unyamo-ink">
+                  <p className="font-heading font-bold text-unyam-ink-muted text-xs">累計スコア</p>
+                  <p className="font-heading font-extrabold text-xl text-unyam-ink">
                     {stats.totalScore}
                   </p>
                 </div>
@@ -191,7 +191,7 @@ export default async function ProfilePage() {
                     return (
                       <div key={i} className="flex-1 flex flex-col items-center justify-end">
                         <div
-                          className={`w-full rounded-t-sm ${game.finalScore >= 0 ? 'bg-unyamo-teal' : 'bg-unyamo-red-soft'}`}
+                          className={`w-full rounded-t-sm ${game.finalScore >= 0 ? 'bg-unyam-teal' : 'bg-unyam-red-soft'}`}
                           style={{ height: `${height}px` }}
                           title={`${game.finalScore >= 0 ? '+' : ''}${game.finalScore}`}
                         />
@@ -200,15 +200,15 @@ export default async function ProfilePage() {
                   })}
                 </div>
               ) : (
-                <p className="text-sm text-unyamo-ink-muted text-center py-4">
+                <p className="text-sm text-unyam-ink-muted text-center py-4">
                   まだ対戦記録がありません
                 </p>
               )}
             </div>
 
             {/* HISTORYリスト */}
-            <div className="bg-unyamo-surface border-2 border-unyamo-border rounded-3xl p-5 shadow-[0_6px_20px_-6px_rgba(40,30,20,0.12)]">
-              <p className="font-heading font-bold text-unyamo-ink text-sm mb-4 flex items-center gap-2">
+            <div className="bg-unyam-surface border-2 border-unyam-border rounded-3xl p-5 shadow-[0_6px_20px_-6px_rgba(40,30,20,0.12)]">
+              <p className="font-heading font-bold text-unyam-ink text-sm mb-4 flex items-center gap-2">
                 <span>📜</span> HISTORY
               </p>
               {stats.recentGames.length > 0 ? (
@@ -218,7 +218,7 @@ export default async function ProfilePage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-unyamo-ink-muted text-center py-4">
+                <p className="text-sm text-unyam-ink-muted text-center py-4">
                   ゲームに参加すると戦績が記録されます
                 </p>
               )}
@@ -269,8 +269,8 @@ function HistoryRow({ game }: { game: RecentGame }) {
     <div
       className={`flex items-center justify-between rounded-2xl px-4 py-3 border-2 transition-colors ${
         game.isWinner
-          ? 'border-unyamo-gold/50 bg-unyamo-gold-soft/20'
-          : 'border-unyamo-border bg-unyamo-cream'
+          ? 'border-unyam-gold/50 bg-unyam-gold-soft/20'
+          : 'border-unyam-border bg-unyam-cream'
       }`}
     >
       <div className="flex items-center gap-3">
@@ -278,14 +278,14 @@ function HistoryRow({ game }: { game: RecentGame }) {
           {medal ?? `${game.rank}`}
         </span>
         <div>
-          <p className="font-heading font-bold text-unyamo-ink text-sm">
+          <p className="font-heading font-bold text-unyam-ink text-sm">
             {game.rank}位 / {game.gameRecord.playerCount}人
           </p>
           <div className="flex items-center gap-1.5 mt-0.5">
-            <span className="text-xs font-heading text-unyamo-ink-muted">{timeLabel}</span>
+            <span className="text-xs font-heading text-unyam-ink-muted">{timeLabel}</span>
             {game.declared && (
-              <span className="text-xs font-heading font-bold text-unyamo-gold-deep">
-                · ウニャモ
+              <span className="text-xs font-heading font-bold text-unyam-gold-deep">
+                · ウニャム
               </span>
             )}
           </div>
@@ -293,7 +293,7 @@ function HistoryRow({ game }: { game: RecentGame }) {
       </div>
       <span
         className={`font-heading font-extrabold text-lg ${
-          isPositive ? 'text-unyamo-green' : 'text-unyamo-red'
+          isPositive ? 'text-unyam-green' : 'text-unyam-red'
         }`}
         aria-label={`${isPositive ? 'プラス' : 'マイナス'}${Math.abs(game.finalScore)}点`}
       >

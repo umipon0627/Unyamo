@@ -12,11 +12,11 @@ import { cn } from '@/lib/utils'
 
 // ルームカラーチップの選択肢（アクセントカラー）
 const ROOM_COLORS = [
-  { label: 'グリーン', value: 'green', bg: 'bg-unyamo-green', border: 'border-unyamo-green' },
-  { label: 'ネイビー', value: 'navy', bg: 'bg-unyamo-navy-base', border: 'border-unyamo-navy-base' },
-  { label: 'ゴールド', value: 'gold', bg: 'bg-unyamo-gold', border: 'border-unyamo-gold' },
-  { label: 'レッド', value: 'red', bg: 'bg-unyamo-red', border: 'border-unyamo-red' },
-  { label: 'ティール', value: 'teal', bg: 'bg-unyamo-teal', border: 'border-unyamo-teal' },
+  { label: 'グリーン', value: 'green', bg: 'bg-unyam-green', border: 'border-unyam-green' },
+  { label: 'ネイビー', value: 'navy', bg: 'bg-unyam-navy-base', border: 'border-unyam-navy-base' },
+  { label: 'ゴールド', value: 'gold', bg: 'bg-unyam-gold', border: 'border-unyam-gold' },
+  { label: 'レッド', value: 'red', bg: 'bg-unyam-red', border: 'border-unyam-red' },
+  { label: 'ティール', value: 'teal', bg: 'bg-unyam-teal', border: 'border-unyam-teal' },
 ]
 
 export function CreateRoomDialog() {
@@ -54,15 +54,15 @@ export function CreateRoomDialog() {
   return (
     <>
       <Button
-        className="rounded-full bg-unyamo-green text-white hover:bg-unyamo-green/90 font-heading font-bold px-4"
+        className="rounded-full bg-unyam-green text-white hover:bg-unyam-green/90 font-heading font-bold px-4"
         onClick={() => setOpen(true)}
       >
         ルームを作成
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="bg-unyamo-surface border-unyamo-border rounded-3xl max-w-sm shadow-xl">
+        <DialogContent className="bg-unyam-surface border-unyam-border rounded-3xl max-w-sm shadow-xl">
           <DialogHeader>
-            <DialogTitle className="font-heading font-bold text-unyamo-ink text-xl">
+            <DialogTitle className="font-heading font-bold text-unyam-ink text-xl">
               新しいルームを作成
             </DialogTitle>
           </DialogHeader>
@@ -72,7 +72,7 @@ export function CreateRoomDialog() {
             <div>
               <Label
                 htmlFor="roomName"
-                className="text-unyamo-ink text-sm font-medium mb-1.5 block"
+                className="text-unyam-ink text-sm font-medium mb-1.5 block"
               >
                 ルーム名
               </Label>
@@ -82,13 +82,13 @@ export function CreateRoomDialog() {
                 onChange={e => setRoomName(e.target.value)}
                 placeholder="例: 友達と遊ぼう"
                 maxLength={30}
-                className="rounded-xl border-unyamo-border bg-unyamo-cream text-unyamo-ink placeholder:text-unyamo-ink-muted/60"
+                className="rounded-xl border-unyam-border bg-unyam-cream text-unyam-ink placeholder:text-unyam-ink-muted/60"
               />
             </div>
 
             {/* カラーチップ */}
             <div>
-              <Label className="text-unyamo-ink text-sm font-medium mb-2 block">
+              <Label className="text-unyam-ink text-sm font-medium mb-2 block">
                 テーマカラー
               </Label>
               <div className="flex gap-2">
@@ -103,7 +103,7 @@ export function CreateRoomDialog() {
                       'w-8 h-8 rounded-full transition-all border-2',
                       c.bg,
                       selectedColor === c.value
-                        ? `${c.border} ring-2 ring-offset-2 ring-offset-unyamo-surface scale-110`
+                        ? `${c.border} ring-2 ring-offset-2 ring-offset-unyam-surface scale-110`
                         : 'border-transparent opacity-70 hover:opacity-100',
                     )}
                   />
@@ -113,7 +113,7 @@ export function CreateRoomDialog() {
 
             {/* 最大人数 */}
             <div>
-              <Label className="text-unyamo-ink text-sm font-medium mb-2 block">
+              <Label className="text-unyam-ink text-sm font-medium mb-2 block">
                 最大人数
               </Label>
               <div className="flex gap-1.5 flex-wrap">
@@ -126,8 +126,8 @@ export function CreateRoomDialog() {
                     className={cn(
                       'w-9 h-9 rounded-full text-sm font-heading font-bold transition-all border',
                       maxPlayers === n
-                        ? 'bg-unyamo-green text-white border-unyamo-green shadow-sm'
-                        : 'bg-unyamo-cream text-unyamo-ink border-unyamo-border hover:border-unyamo-green hover:text-unyamo-green',
+                        ? 'bg-unyam-green text-white border-unyam-green shadow-sm'
+                        : 'bg-unyam-cream text-unyam-ink border-unyam-border hover:border-unyam-green hover:text-unyam-green',
                     )}
                   >
                     {n}
@@ -138,7 +138,7 @@ export function CreateRoomDialog() {
 
             {/* 公開/非公開トグル */}
             <div>
-              <Label className="text-unyamo-ink text-sm font-medium mb-2 block">
+              <Label className="text-unyam-ink text-sm font-medium mb-2 block">
                 公開設定
               </Label>
               <div className="flex gap-2">
@@ -149,8 +149,8 @@ export function CreateRoomDialog() {
                   className={cn(
                     'flex-1 py-2 rounded-full text-sm font-heading font-bold border transition-all',
                     !isPrivate
-                      ? 'bg-unyamo-green text-white border-unyamo-green'
-                      : 'bg-unyamo-cream text-unyamo-ink-muted border-unyamo-border hover:border-unyamo-green',
+                      ? 'bg-unyam-green text-white border-unyam-green'
+                      : 'bg-unyam-cream text-unyam-ink-muted border-unyam-border hover:border-unyam-green',
                   )}
                 >
                   公開
@@ -162,8 +162,8 @@ export function CreateRoomDialog() {
                   className={cn(
                     'flex-1 py-2 rounded-full text-sm font-heading font-bold border transition-all',
                     isPrivate
-                      ? 'bg-unyamo-navy-base text-white border-unyamo-navy-base'
-                      : 'bg-unyamo-cream text-unyamo-ink-muted border-unyamo-border hover:border-unyamo-navy-base',
+                      ? 'bg-unyam-navy-base text-white border-unyam-navy-base'
+                      : 'bg-unyam-cream text-unyam-ink-muted border-unyam-border hover:border-unyam-navy-base',
                   )}
                 >
                   非公開（PIN）
@@ -176,7 +176,7 @@ export function CreateRoomDialog() {
               <div>
                 <Label
                   htmlFor="password"
-                  className="text-unyamo-ink text-sm font-medium mb-1.5 block"
+                  className="text-unyam-ink text-sm font-medium mb-1.5 block"
                 >
                   パスワード
                 </Label>
@@ -188,20 +188,20 @@ export function CreateRoomDialog() {
                     onChange={e => setPassword(e.target.value)}
                     placeholder="4〜20文字"
                     maxLength={20}
-                    className="rounded-xl border-unyamo-border bg-unyamo-cream text-unyamo-ink placeholder:text-unyamo-ink-muted/60 tracking-widest font-mono"
+                    className="rounded-xl border-unyam-border bg-unyam-cream text-unyam-ink placeholder:text-unyam-ink-muted/60 tracking-widest font-mono"
                   />
                 </div>
               </div>
             )}
 
             {error && (
-              <p className="text-unyamo-red text-sm font-medium" role="alert">
+              <p className="text-unyam-red text-sm font-medium" role="alert">
                 {error}
               </p>
             )}
 
             <Button
-              className="w-full rounded-full bg-unyamo-green text-white hover:bg-unyamo-green/90 font-heading font-bold py-2.5"
+              className="w-full rounded-full bg-unyam-green text-white hover:bg-unyam-green/90 font-heading font-bold py-2.5"
               onClick={handleCreate}
               disabled={loading}
             >

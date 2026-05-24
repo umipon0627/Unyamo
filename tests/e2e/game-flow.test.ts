@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test'
 test.describe('ランディング・ログインページ', () => {
   test('ランディングページが表示される', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByRole('heading', { name: 'Unyamo' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Unyam' })).toBeVisible()
     await expect(page.getByRole('link', { name: 'はじめる' })).toBeVisible()
   })
 

@@ -11,19 +11,19 @@ export default async function LobbyPage() {
   if (!user) redirect('/login')
 
   return (
-    <div className="flex flex-col min-h-screen bg-unyamo-cream">
+    <div className="flex flex-col min-h-screen bg-unyam-cream">
       <Header />
       <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-6">
         {/* ページヘッダー */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
           <div>
-            <h1 className="font-heading text-2xl font-bold text-unyamo-ink">
+            <h1 className="font-heading text-2xl font-bold text-unyam-ink">
               ロビー
             </h1>
-            <p className="text-unyamo-ink-muted text-sm mt-0.5">
+            <p className="text-unyam-ink-muted text-sm mt-0.5">
               ようこそ、{user.name} さん
               {user.isGuest && (
-                <span className="ml-2 text-unyamo-gold text-xs font-medium">
+                <span className="ml-2 text-unyam-gold text-xs font-medium">
                   （ゲストモード・戦績は保存されません）
                 </span>
               )}

@@ -42,7 +42,7 @@ export function advanceTurn(state: GameState): GameState {
 }
 
 export function isRoundComplete(state: GameState): boolean {
-  if (!state.unyamoDeclarerId) return false
+  if (!state.unyamDeclarerId) return false
   return state.remainingPlayersAfterDeclare.length === 0
 }
 
